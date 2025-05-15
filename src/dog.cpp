@@ -67,9 +67,11 @@ vector<vector<uint8_t>> convolve(
 }
 
 // Compute the Difference of Gaussians
+// if threshold is set to a negative value, it will not be applied
+// otherwise, it shall be at most 1.0f
 vector<vector<uint8_t>> computeDoG(
     const vector<vector<uint8_t>> &image,
-    float sigma1, float sigma2, int kernelSize) {
+    float sigma1, float sigma2, int kernelSize, float threshold = -1) {
 
     auto kernel1 = generateGaussianKernel(kernelSize, sigma1);
     auto kernel2 = generateGaussianKernel(kernelSize, sigma2);
@@ -77,8 +79,8 @@ vector<vector<uint8_t>> computeDoG(
     auto blur1 = convolve(image, kernel1);
     auto blur2 = convolve(image, kernel2);
     
-    savePNGGrayscale("blur1.png", blur1);
-    savePNGGrayscale("blur2.png", blur2);
+    // savePNGGrayscale("blur1.png", blur1);
+    // savePNGGrayscale("blur2.png", blur2);
 
     int height = image.size();
     int width = image[0].size();
@@ -89,17 +91,13 @@ vector<vector<uint8_t>> computeDoG(
             dog[y][x] = clamp(255 - 20*(blur1[y][x] - blur2[y][x]), 0, 255);
 
 
-    // save the DoG image
-    savePNGGrayscale("dog.png", dog);
-
-
+    // save the DoG image before thresholding
+    // savePNGGrayscale("dog.png", dog);
+    
     // apply threshold
-    // estimate a good threshold
-    // for the DoG image
-
-    // 0.5 * (max - min) + min
-    int min = 255;
-    int max = 0;
+    if (threshold < 0) return dog;
+    
+    int min = 255, max = 0;
     for (int y = 0; y < height; ++y) {
         for (int x = 0; x < width; ++x) {
             if (dog[y][x] < min) {
@@ -110,19 +108,12 @@ vector<vector<uint8_t>> computeDoG(
             }
         }
     }
-    int threshold = 0.1 * (max - min) + min;
+    int z_thr = threshold * (max - min) + min;
+    cerr << min << " " << max << " " << threshold << " " << z_thr << endl;
 
-
-    for (int y = 0; y < height; ++y) {
-        for (int x = 0; x < width; ++x) {
-            if (dog[y][x] < threshold) {
-                dog[y][x] = 0;
-            } else {
-                dog[y][x] = 255;
-            }
-        }
-    }
-
+    for (int y = 0; y < height; ++y)
+        for (int x = 0; x < width; ++x)
+            dog[y][x] = (dog[y][x] >= z_thr) ? 255 : 0;
 
     return dog;
 }

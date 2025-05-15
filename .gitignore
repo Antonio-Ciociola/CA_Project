@@ -1,2 +1,6 @@
 .DS_Store
 .vscode
+*_edges.png
+*/*_edges.png
+outputs/*
+dog

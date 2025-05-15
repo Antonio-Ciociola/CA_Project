@@ -25,6 +25,9 @@ int main(int argc, char** argv){
     string outputFile;
     if(argc > 2){
         outputFile = argv[2];
+        if(outputFile.find(".png") == string::npos){
+            cerr << "Warning: Output file " << outputFile << " doesn't have .png extension" << endl;
+        }
     } else {
         outputFile = inputFile.substr(0, inputFile.find_last_of('.')) + "_edges.png";
     }
@@ -36,7 +39,7 @@ int main(int argc, char** argv){
         return 1;
     }
 
-    float sigma1, sigma2;
+    float sigma1, sigma2, threshold = -1;
     if(argc > 3){
         sigma1 = std::stof(argv[3]);
         sigma2 = (argc > 4)? std::stof(argv[4]) : 2 * sigma1;
@@ -48,7 +51,10 @@ int main(int argc, char** argv){
     }
     int kernelSize = int(2 * sigma2) | 1; // Ensure kernel size is odd
 
-    auto dog = computeDoG(image, sigma1, sigma2, kernelSize);
+    if(argc > 5)
+        threshold = std::min(std::stof(argv[5]), 1.0f);
+
+    auto dog = computeDoG(image, sigma1, sigma2, kernelSize, threshold);
 
     savePNGGrayscale(outputFile, dog);
     return 0;
