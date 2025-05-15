@@ -76,6 +76,9 @@ vector<vector<uint8_t>> computeDoG(
 
     auto blur1 = convolve(image, kernel1);
     auto blur2 = convolve(image, kernel2);
+    
+    savePNGGrayscale("blur1.png", blur1);
+    savePNGGrayscale("blur2.png", blur2);
 
     int height = image.size();
     int width = image[0].size();
@@ -83,7 +86,43 @@ vector<vector<uint8_t>> computeDoG(
 
     for (int y = 0; y < height; ++y)
         for (int x = 0; x < width; ++x)
-            dog[y][x] = clamp(128 + 10*(blur1[y][x] - blur2[y][x]), 0, 255);
+            dog[y][x] = clamp(255 - 20*(blur1[y][x] - blur2[y][x]), 0, 255);
+
+
+    // save the DoG image
+    savePNGGrayscale("dog.png", dog);
+
+
+    // apply threshold
+    // estimate a good threshold
+    // for the DoG image
+
+    // 0.5 * (max - min) + min
+    int min = 255;
+    int max = 0;
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            if (dog[y][x] < min) {
+                min = dog[y][x];
+            }
+            if (dog[y][x] > max) {
+                max = dog[y][x];
+            }
+        }
+    }
+    int threshold = 0.1 * (max - min) + min;
+
+
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            if (dog[y][x] < threshold) {
+                dog[y][x] = 0;
+            } else {
+                dog[y][x] = 255;
+            }
+        }
+    }
+
 
     return dog;
 }
