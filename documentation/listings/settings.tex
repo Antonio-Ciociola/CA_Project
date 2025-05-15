@@ -1,0 +1,47 @@
+
+% Define a custom style for your tcolorbox
+\tcbset{
+    listing engine=minted,
+    minted options={
+            fontsize=\small,
+            linenos,
+            numbersep=4mm,
+            breaklines,
+            baselinestretch=0.9
+        },
+    colback=term_bg_color,
+    colframe=Unipi,
+    fonttitle=\bfseries,
+    listing only,
+    left=1.5mm,
+    arc=0.5mm,
+    enhanced,
+    breakable,
+    before skip=\baselineskip,
+    grow to left by=2mm,grow to right by=2mm,
+    enlarge bottom by=-8pt
+}
+
+% Define command to include a minted file
+\newtcbinputlisting{\mintedCode}[3][]{%
+    listing file={#3},
+    minted language={#2}
+}
+
+% Space between caption and figure, listing
+\setlength{\abovecaptionskip}{8pt}
+\setlength{\belowcaptionskip}{6pt}
+\captionsetup[figure]{belowskip=-12pt}
+
+% Define a new environment for code listings
+\newenvironment{code}
+{\captionsetup{type=listing}}
+{\par\noindent\ignorespacesafterend}
+
+\SetupFloatingEnvironment{listing}{name=Listing, listname=List of Listings}
+
+\usemintedstyle{sas}
+% \usemintedstyle{unipi}
+% \usemintedstyle{xcode}
+% \usemintedstyle[output]{rrt}
+

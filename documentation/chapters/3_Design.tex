@@ -1,0 +1,15 @@
+\chapter{Design}
+
+\section{Actors}
+
+The application is designed to support three main categories of actors: \textit{Guests}, \textit{Registered Users}, and \textit{Administrators}. Each actor plays a specific role within the system and interacts with the academic content and functionalities according to a well-defined set of permissions and responsibilities.
+
+\subsection{Guest User}
+Guests represent users who access the platform without creating an account. They interact with the system in a read-only mode, making use of its core functionalities to explore academic content. A guest can search for academic papers and authors by keywords, view detailed publication records, and access publicly available metadata such as abstracts, citation counts, co-authorship networks, and institutional affiliations. They can also explore statistics aggregated over time, view rankings of authors or institutions by number of publications or citations, and compute author collaboration distances. Although guests can navigate a large part of the platform and gain meaningful insights from the data, they lack any capability for personalization, content contribution, or user-specific recommendations.
+
+\subsection{Registered User}
+Registered users are individuals who have created a personal account on the platform. In addition to all the capabilities granted to guests, they benefit from a personalized experience that includes following authors, receiving updates about new publications, and accessing recommendation systems tailored to their interests. A distinctive feature of registered users is the possibility to associate their account with an existing author profile. Once such a link is established the user can actively manage their academic profile. This includes updating their biography, modifying institutional affiliations, and uploading newly published papers. Thus, the registered user may operate either as a general reader of the platform or as an academic contributor, participating in the enrichment of the underlying database.
+
+\subsection{Administrator}
+Administrators are a specialized type of User who are entrusted with the management and oversight of the entire platform. Their responsibilities extend beyond personal usage, as they maintain the consistency, reliability, and growth of the system. Administrators can perform operations that affect the global state of the database, including the creation, modification, and deletion of papers, authors, institutions, and publication venues. They also supervise user accounts, manage role assignments, and validate the links between user accounts and author profiles. Furthermore, they have privileged access to global analytics and internal statistics, which support both quality assurance and strategic development of the platform. Administrators ensure the platform remains a reliable and authoritative tool for academic discovery.
+
