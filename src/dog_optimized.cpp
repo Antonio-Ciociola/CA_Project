@@ -41,7 +41,7 @@ vector<vector<float>> generateGaussianKernel(int size, float sigma) {
 // Convolve image with kernel
 vector<vector<uint8_t>> convolve(
     const vector<vector<uint8_t>> &image,
-    const vector<vector<float>> &kernel) {
+    const vector<vector<float>> &kernel, int &min, int &max) {
 
     int height = image.size();
     int width = image[0].size();
@@ -60,6 +60,9 @@ vector<vector<uint8_t>> convolve(
                     sum += image[iy][ix] * kernel[i][j];
                 }
             }
+            if (sum < min) min = sum;
+            if (sum > max) max = sum;
+
             output[y][x] = clamp(int(sum), 0, 255);
         }
     }
@@ -71,14 +74,20 @@ vector<vector<uint8_t>> convolve(
 // otherwise, it shall be at most 1.0f
 vector<vector<uint8_t>> computeDoG(
     const vector<vector<uint8_t>> &image,
-    float sigma1, float sigma2, int kernelSize, float threshold = -1,int numThreads = -1) {
+    float sigma1, float sigma2, int kernelSize, float threshold = -1, int numThreads = 1) {
 
     auto kernel1 = generateGaussianKernel(kernelSize, sigma1);
     auto kernel2 = generateGaussianKernel(kernelSize, sigma2);
 
-    auto blur1 = convolve(image, kernel1);
-    auto blur2 = convolve(image, kernel2);
-    
+    for (int i = 0; i < kernelSize; ++i) {
+        for (int j = 0; j < kernelSize; ++j) {
+            kernel1[i][j] -= kernel2[i][j];
+        }
+    }
+
+    int min = 255, max = 0;
+    auto edge = convolve(image, kernel1, min, max);
+        
     // savePNGGrayscale("blur1.png", blur1);
     // savePNGGrayscale("blur2.png", blur2);
 
@@ -88,7 +97,7 @@ vector<vector<uint8_t>> computeDoG(
 
     for (int y = 0; y < height; ++y)
         for (int x = 0; x < width; ++x)
-            dog[y][x] = clamp(255 - 20*(blur1[y][x] - blur2[y][x]), 0, 255);
+            dog[y][x] = clamp(255 - 20*edge[y][x], 0, 255);
 
 
     // save the DoG image before thresholding
@@ -97,17 +106,6 @@ vector<vector<uint8_t>> computeDoG(
     // apply threshold
     if (threshold < 0) return dog;
     
-    int min = 255, max = 0;
-    for (int y = 0; y < height; ++y) {
-        for (int x = 0; x < width; ++x) {
-            if (dog[y][x] < min) {
-                min = dog[y][x];
-            }
-            if (dog[y][x] > max) {
-                max = dog[y][x];
-            }
-        }
-    }
     int z_thr = threshold * (max - min) + min;
     cerr << min << " " << max << " " << threshold << " " << z_thr << endl;
 

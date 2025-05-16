@@ -3,6 +3,7 @@
 #include <cmath>
 #include <cstdint>
 #include <string>
+#include <chrono>
 #include "png_util.h"
 #include "dog.h"
 
@@ -39,7 +40,7 @@ int main(int argc, char** argv){
         return 1;
     }
 
-    float sigma1, sigma2, threshold = -1;
+    float sigma1, sigma2, threshold = -1, numThreads = -1;
     if(argc > 3){
         sigma1 = std::stof(argv[3]);
         sigma2 = (argc > 4)? std::stof(argv[4]) : 2 * sigma1;
@@ -54,7 +55,16 @@ int main(int argc, char** argv){
     if(argc > 5)
         threshold = std::min(std::stof(argv[5]), 1.0f);
 
-    auto dog = computeDoG(image, sigma1, sigma2, kernelSize, threshold);
+    if (argc > 6) {
+        numThreads = std::stoi(argv[6]);
+    }
+
+    // measure time required to compute the DoG
+    auto start = std::chrono::high_resolution_clock::now();
+    auto dog = computeDoG(image, sigma1, sigma2, kernelSize, threshold, numThreads);
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = end - start;
+    cout << "Elapsed time: " << elapsed.count() << " seconds" << endl;
 
     savePNGGrayscale(outputFile, dog);
     return 0;
