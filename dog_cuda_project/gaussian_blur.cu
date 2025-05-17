@@ -39,8 +39,9 @@ __global__ void blur_vertical(const unsigned char* input, unsigned char* output,
     output[y * width + x] = (unsigned char)(sum);
 }
 
-void gaussian_blur_cuda(const std::vector<uint8_t>& input, std::vector<uint8_t>& output, int width, int height, float sigma) {
-    int ksize = int(6 * sigma + 1) | 1;
+void gaussian_blur_cuda(const std::vector<uint8_t>& input, std::vector<uint8_t>& output, int width, int height, float sigma, int ksize = 0) {
+    if(ksize <= 0)
+        ksize = int(6 * sigma + 1) | 1;
     int half = ksize / 2;
     std::vector<float> h_kernel(ksize);
 
