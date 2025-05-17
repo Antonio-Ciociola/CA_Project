@@ -78,7 +78,7 @@ vector<vector<uint8_t>> computeDoG(
     // make the difference of kernels
     for (int i = 0; i < kernelSize; ++i) {
         for (int j = 0; j < kernelSize; ++j) {
-            kernel1[i][j] -= kernel2[i][j];
+            kernel2[i][j] -= kernel1[i][j];
         }
     }
 
@@ -142,7 +142,7 @@ vector<vector<uint8_t>> computeDoG(
         int startRow = currentRow;
         int endRow = startRow + rowsPerThread + (i < extra ? 1 : 0);
         threads.emplace_back(compute_dog_worker, startRow, endRow, 
-            image, kernel1);
+            image, kernel2);
         currentRow = endRow;
         std::cout << startRow << " " << endRow << std::endl;
     }
@@ -161,7 +161,7 @@ vector<vector<uint8_t>> computeDoG(
     auto threshold_worker = [&](int startRow, int endRow) {
         for (int y = startRow; y < endRow; ++y) {
             for (int x = 0; x < width; ++x) {
-                dog[y][x] = (dog[y][x] > th) ? 255 : 0;
+                dog[y][x] = (dog[y][x] >= th) ? 255 : 0;
             }
         }
     };

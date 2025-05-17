@@ -88,7 +88,7 @@ vector<vector<uint8_t>> computeDoG(
 
     for (int y = 0; y < height; ++y)
         for (int x = 0; x < width; ++x)
-            dog[y][x] = clamp(255 - 20*(blur1[y][x] - blur2[y][x]), 0, 255);
+            dog[y][x] = clamp(255 - 20*(blur2[y][x] - blur1[y][x]), 0, 255);
 
 
     // save the DoG image before thresholding

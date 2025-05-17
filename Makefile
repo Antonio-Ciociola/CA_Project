@@ -1,4 +1,11 @@
+PKG_CFLAGS := $(shell pkg-config --cflags opencv4)
+PKG_LIBS := $(shell pkg-config --libs opencv4)
+CXXFLAGS := -std=c++11 $(PKG_CFLAGS)
+
 all:
-	g++ -std=c++11 src/main.cpp src/dog.cpp src/png_util.cpp src/lodepng.cpp -o dog
-	g++ -std=c++11 src/main.cpp src/dog_optimized.cpp src/png_util.cpp src/lodepng.cpp -o dog_optimized
-	g++ -std=c++11 src/main.cpp src/dog_parallel.cpp src/png_util.cpp src/lodepng.cpp -o dog_parallel
+	g++ $(CXXFLAGS) src/main.cpp src/dog.cpp src/png_util.cpp src/lodepng.cpp -o dog $(PKG_LIBS)
+	g++ $(CXXFLAGS) src/main.cpp src/dog_optimized.cpp src/png_util.cpp src/lodepng.cpp -o dog_optimized $(PKG_LIBS)
+	g++ $(CXXFLAGS) src/main.cpp src/dog_parallel.cpp src/png_util.cpp src/lodepng.cpp -o dog_parallel $(PKG_LIBS)
+
+clean:
+	rm -f dog dog_optimized dog_parallel

@@ -81,12 +81,12 @@ vector<vector<uint8_t>> computeDoG(
 
     for (int i = 0; i < kernelSize; ++i) {
         for (int j = 0; j < kernelSize; ++j) {
-            kernel1[i][j] -= kernel2[i][j];
+            kernel2[i][j] -= kernel1[i][j];
         }
     }
 
     int min = 255, max = 0;
-    auto edge = convolve(image, kernel1, min, max);
+    auto edge = convolve(image, kernel2, min, max);
         
     // savePNGGrayscale("blur1.png", blur1);
     // savePNGGrayscale("blur2.png", blur2);
