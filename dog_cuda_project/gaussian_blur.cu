@@ -39,7 +39,7 @@ __global__ void blur_vertical(const unsigned char* input, unsigned char* output,
     output[y * width + x] = (unsigned char)(sum);
 }
 
-void gaussian_blur_cuda(const std::vector<uint8_t>& input, std::vector<uint8_t>& output, int width, int height, float sigma, int ksize = 0) {
+void gaussian_blur_cuda(uint8_t* input, uint8_t* output, int width, int height, float sigma, int ksize = 0) {
     if(ksize <= 0)
         ksize = int(6 * sigma + 1) | 1;
     int half = ksize / 2;
@@ -63,14 +63,14 @@ void gaussian_blur_cuda(const std::vector<uint8_t>& input, std::vector<uint8_t>&
     cudaMalloc(&d_temp, img_size);
     cudaMalloc(&d_output, img_size);
 
-    cudaMemcpy(d_input, input.data(), img_size, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_input, input, img_size, cudaMemcpyHostToDevice);
 
     dim3 block(16, 16);
     dim3 grid((width + 15) / 16, (height + 15) / 16);
     blur_horizontal<<<grid, block>>>(d_input, d_temp, width, height, ksize);
     blur_vertical<<<grid, block>>>(d_temp, d_output, width, height, ksize);
 
-    cudaMemcpy(output.data(), d_output, img_size, cudaMemcpyDeviceToHost);
+    cudaMemcpy(output, d_output, img_size, cudaMemcpyDeviceToHost);
 
     cudaFree(d_input);
     cudaFree(d_temp);

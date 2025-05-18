@@ -18,37 +18,31 @@ int clamp(int value, int minval, int maxval) {
 }
 
 // Generate a Gaussian kernel
-vector<vector<float>> generateGaussianKernel(int size, float sigma) {
-    vector<vector<float>> kernel(size, vector<float>(size));
+vector<float> generateGaussianKernel(int size, float sigma) {
+    vector<float> kernel;
+    kernel.reserve(size * size);
     float sum = 0.0;
     int half = size / 2;
 
     for (int i = -half; i <= half; ++i) {
         for (int j = -half; j <= half; ++j) {
             float value = exp(-(i * i + j * j) / (2 * sigma * sigma));
-            kernel[i + half][j + half] = value;
+            kernel.push_back(value);
             sum += value;
         }
     }
-
-    for (int i = 0; i < size; ++i)
-        for (int j = 0; j < size; ++j)
-            kernel[i][j] /= sum;
-
+    for(int i = 0; i < size * size; ++i)
+        kernel[i] /= sum;
     return kernel;
 }
 
 // Convolve image with kernel
-vector<vector<uint8_t>> convolve(
-    const vector<vector<uint8_t>> &image,
-    const vector<vector<float>> &kernel) {
+void convolve(
+    const uint8_t* image, const float* kernel,
+    int width, int height, int ksize,
+    uint8_t* output) {
 
-    int height = image.size();
-    int width = image[0].size();
-    int ksize = kernel.size();
     int half = ksize / 2;
-
-    vector<vector<uint8_t>> output(height, vector<uint8_t>(width, 0));
 
     for (int y = half; y < height - half; ++y) {
         for (int x = half; x < width - half; ++x) {
@@ -57,63 +51,40 @@ vector<vector<uint8_t>> convolve(
                 for (int j = 0; j < ksize; ++j) {
                     int iy = y + i - half;
                     int ix = x + j - half;
-                    sum += image[iy][ix] * kernel[i][j];
+                    sum += image[iy*width + ix] * kernel[i*ksize + j];
                 }
             }
-            output[y][x] = clamp(int(sum), 0, 255);
+            output[y*width + x] = clamp(int(sum), 0, 255);
         }
     }
-    return output;
 }
 
 // Compute the Difference of Gaussians
 // if threshold is set to a negative value, it will not be applied
 // otherwise, it shall be at most 1.0f
-vector<vector<uint8_t>> computeDoG(
-    const vector<vector<uint8_t>> &image,
+void computeDoG(
+    const uint8_t* input, uint8_t* output, int h, int w,
     float sigma1, float sigma2, int kernelSize, float threshold = -1,int numThreads = -1) {
 
     auto kernel1 = generateGaussianKernel(kernelSize, sigma1);
     auto kernel2 = generateGaussianKernel(kernelSize, sigma2);
 
-    auto blur1 = convolve(image, kernel1);
-    auto blur2 = convolve(image, kernel2);
-    
-    // savePNGGrayscale("blur1.png", blur1);
-    // savePNGGrayscale("blur2.png", blur2);
+    vector<uint8_t> blur1(h * w), blur2(h * w);
+    convolve(input, kernel1.data(), w, h, kernelSize, blur1.data());
+    convolve(input, kernel2.data(), w, h, kernelSize, blur2.data());
 
-    int height = image.size();
-    int width = image[0].size();
-    vector<vector<uint8_t>> dog(height, vector<uint8_t>(width));
-
-    for (int y = 0; y < height; ++y)
-        for (int x = 0; x < width; ++x)
-            dog[y][x] = clamp(255 - 20*(blur2[y][x] - blur1[y][x]), 0, 255);
-
-
-    // save the DoG image before thresholding
-    // savePNGGrayscale("dog.png", dog);
-    
-    // apply threshold
-    if (threshold < 0) return dog;
-    
     int min = 255, max = 0;
-    for (int y = 0; y < height; ++y) {
-        for (int x = 0; x < width; ++x) {
-            if (dog[y][x] < min) {
-                min = dog[y][x];
-            }
-            if (dog[y][x] > max) {
-                max = dog[y][x];
-            }
-        }
+    for(int i = 0; i < w * h; ++i){
+        output[i] = clamp(255 - 20*(blur2[i] - blur1[i]), 0, 255);
+        if (output[i] < min) min = output[i];
+        if (output[i] > max) max = output[i];
     }
+
+    // apply threshold
+    if (threshold < 0) return;
     int z_thr = threshold * (max - min) + min;
     cerr << min << " " << max << " " << threshold << " " << z_thr << endl;
 
-    for (int y = 0; y < height; ++y)
-        for (int x = 0; x < width; ++x)
-            dog[y][x] = (dog[y][x] >= z_thr) ? 255 : 0;
-
-    return dog;
+    for(int i = 0; i < w * h; ++i)
+        output[i] = (output[i] >= z_thr) ? 255 : 0;
 }
