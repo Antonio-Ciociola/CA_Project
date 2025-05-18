@@ -73,7 +73,7 @@ void computeDoG(
         kernel2[i] -= kernel1[i];
 
     vector<uint8_t> result(w * h);
-    convolve(input, kernel1.data(), w, h, kernelSize, result.data());
+    convolve(input, kernel2.data(), w, h, kernelSize, result.data());
 
     int min = 255, max = 0;
     for(int i = 0; i < w * h; ++i){

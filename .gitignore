@@ -6,3 +6,5 @@ outputs/*
 dog
 dog_optimized
 dog_parallel
+dog_gpu
+images/video_full.mp4

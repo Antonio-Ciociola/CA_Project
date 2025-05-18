@@ -2,6 +2,9 @@
 #include <vector>
 #include <cmath>
 #include <cstdint>
+#include <iostream>
+using std::cerr;
+using std::endl;
 
 __constant__ float d_kernel[64];
 
@@ -39,7 +42,7 @@ __global__ void blur_vertical(const unsigned char* input, unsigned char* output,
     output[y * width + x] = (unsigned char)(sum);
 }
 
-void gaussian_blur_cuda(uint8_t* input, uint8_t* output, int width, int height, float sigma, int ksize = 0) {
+void gaussian_blur_cuda(const uint8_t* input, uint8_t* output, int width, int height, float sigma, int ksize = 0) {
     if(ksize <= 0)
         ksize = int(6 * sigma + 1) | 1;
     int half = ksize / 2;
@@ -75,4 +78,9 @@ void gaussian_blur_cuda(uint8_t* input, uint8_t* output, int width, int height, 
     cudaFree(d_input);
     cudaFree(d_temp);
     cudaFree(d_output);
+
+    /*
+    if(cudaGetLastError() != cudaSuccess)
+        cerr << "CUDA Error: " << cudaGetErrorString(cudaGetLastError()) << endl;
+    */
 }

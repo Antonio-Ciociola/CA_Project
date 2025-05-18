@@ -17,7 +17,7 @@ int clamp(int value, int minval, int maxval) {
 }
 
 extern void gaussian_blur_cuda(
-    const std::vector<uint8_t>& input, std::vector<uint8_t>& output,
+    const uint8_t* input, uint8_t* output,
     int width, int height, float sigma, int kernelSize);
 
 

@@ -17,4 +17,6 @@ dog_gpu: dog_cuda_project/gaussian_blur.cu dog_cuda_project/dog.cpp dog_cuda_pro
 	nvcc $(CXXFLAGS) dog_cuda_project/gaussian_blur.cu dog_cuda_project/dog.cpp dog_cuda_project/lodepng.cpp src/main.cpp src/png_util.cpp -o dog_gpu $(PKG_LIBS)
 
 clean:
-	rm -f dog dog_optimized dog_parallel
+	rm -f dog dog_optimized dog_parallel dog_gpu
+	rm -f outputs/*
+	rm -f *.mp4 *.png
