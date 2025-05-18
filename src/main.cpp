@@ -98,7 +98,7 @@ int main(int argc, char** argv) {
         auto grayscale_end = high_resolution_clock::now();
 
         // Apply computeDoG
-        auto dog = computeDoG(grayFrame.data, dog, frameHeight, frameWidth,
+        computeDoG(grayFrame.data, dog, frameHeight, frameWidth,
             sigma1, sigma2, kernelSize, threshold, numThreads);
         auto computeDoG_end = high_resolution_clock::now();
 
@@ -110,10 +110,10 @@ int main(int argc, char** argv) {
 
         // Calculate elapsed time for each step and accumulate
         duration<double> read_elapsed = read_end - read_start;
-        duration<double> gray_elapsed = gray_end - read_end;
-        duration<double> dog_elapsed = computeDoG_end - gray_end;
+        duration<double> gray_elapsed = grayscale_end - read_end;
+        duration<double> dog_elapsed = computeDoG_end - grayscale_end;
         duration<double> writer_elapsed = frame_end - computeDoG_end;
-        duration<double> total_elapsed = frame_end - frame_start;
+        duration<double> total_elapsed = frame_end - read_start;
 
         total_read_elapsed += read_elapsed;
         total_gray_elapsed += gray_elapsed;
@@ -121,7 +121,7 @@ int main(int argc, char** argv) {
         total_writer_elapsed += writer_elapsed;
         total_total_elapsed += total_elapsed;
 
-        cout << read_elapsed.count << "\t" << gray_elapsed.count() << "\t" << dog_elapsed.count() << "\t" << writer_elapsed.count() << "\t" << total_elapsed.count() << endl;
+        cout << read_elapsed.count() << "\t" << gray_elapsed.count() << "\t" << dog_elapsed.count() << "\t" << writer_elapsed.count() << "\t" << total_elapsed.count() << endl;
 
         // Reset read start for the next frame
         read_start = high_resolution_clock::now(); 
