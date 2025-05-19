@@ -36,6 +36,17 @@ vector<float> generateGaussianKernel(int size, float sigma) {
     return kernel;
 }
 
+vector<float> generateGaussianKernel2D(float* kernel1, int size) {
+    // multiply the 1D kernel with itself to create a 2D kernel
+    vector<float> kernel(size * size);
+    for (int i = 0; i < size; ++i) {
+        for (int j = 0; j < size; ++j) {
+            kernel[i * size + j] = kernel1[i] * kernel1[j];
+        }
+    }
+    return kernel;
+}
+
 // Convolve image with kernel
 void convolve(
     const uint8_t* image, const float* kernel,
@@ -64,14 +75,14 @@ void convolve(
 // otherwise, it shall be at most 1.0f
 void computeDoG(
     const uint8_t* input, uint8_t* output, int h, int w,
-    float sigma1, float sigma2, int kernelSize, float threshold = -1,int numThreads = -1) {
+    float* kernel1, float* kernel2, int kernelSize, float threshold = -1,int numThreads = -1) {
 
-    auto kernel1 = generateGaussianKernel(kernelSize, sigma1);
-    auto kernel2 = generateGaussianKernel(kernelSize, sigma2);
+    auto kernel1_2D = generateGaussianKernel2D(kernel1, kernelSize);
+    auto kernel2_2D = generateGaussianKernel2D(kernel2, kernelSize);
 
     vector<uint8_t> blur1(h * w), blur2(h * w);
-    convolve(input, kernel1.data(), w, h, kernelSize, blur1.data());
-    convolve(input, kernel2.data(), w, h, kernelSize, blur2.data());
+    convolve(input, kernel1_2D.data(), w, h, kernelSize, blur1.data());
+    convolve(input, kernel2_2D.data(), w, h, kernelSize, blur2.data());
 
     for(int i = 0; i < w * h; ++i){
         output[i] = clamp(255 - 20*(blur2[i] - blur1[i]), 0, 255);
