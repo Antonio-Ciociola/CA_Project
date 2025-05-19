@@ -44,13 +44,13 @@ void convolve(
 
     int half = ksize / 2;
 
-    for (int y = half; y < height - half; ++y) {
-        for (int x = half; x < width - half; ++x) {
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
             float sum = 0.0;
             for (int i = 0; i < ksize; ++i) {
                 for (int j = 0; j < ksize; ++j) {
-                    int iy = y + i - half;
-                    int ix = x + j - half;
+                    int iy = clamp(y + i - half, 0, height - 1);
+                    int ix = clamp(x + j - half, 0, width - 1);
                     sum += image[iy*width + ix] * kernel[i*ksize + j];
                 }
             }
@@ -73,17 +73,13 @@ void computeDoG(
     convolve(input, kernel1.data(), w, h, kernelSize, blur1.data());
     convolve(input, kernel2.data(), w, h, kernelSize, blur2.data());
 
-    int min = 255, max = 0;
     for(int i = 0; i < w * h; ++i){
         output[i] = clamp(255 - 20*(blur2[i] - blur1[i]), 0, 255);
-        if (output[i] < min) min = output[i];
-        if (output[i] > max) max = output[i];
     }
 
     // apply threshold
     if (threshold < 0) return;
-    int z_thr = threshold * (max - min) + min;
-    cerr << min << " " << max << " " << threshold << " " << z_thr << endl;
+    int z_thr = 255 * threshold;
 
     for(int i = 0; i < w * h; ++i)
         output[i] = (output[i] >= z_thr) ? 255 : 0;
