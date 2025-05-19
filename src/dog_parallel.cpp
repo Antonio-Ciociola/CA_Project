@@ -19,29 +19,12 @@ int clamp(int value, int minval, int maxval) {
     return (value < minval) ? minval : (value > maxval) ? maxval : value;
 }
 
-// Generate 1D Gaussian kernel
-vector<float> generateGaussianKernel1D(int size, float sigma) {
-    vector<float> kernel(size);
-    int half = size / 2;
-    float sum = 0.0f;
-
-    for (int i = -half; i <= half; ++i) {
-        float value = exp(-(i * i) / (2 * sigma * sigma));
-        kernel[i + half] = value;
-        sum += value;
-    }
-
-    for (float& v : kernel) v /= sum;
-    return kernel;
-}
-
 // Separable convolution (horizontal then vertical)
 void separableConvolution(
     const uint8_t* input, uint8_t* output,
-    const vector<float>& kernel1D,
+    const float* kernel1D, int ksize,
     int width, int height, int numThreads) {
 
-    int ksize = kernel1D.size();
     int half = ksize / 2;
     vector<float> temp(width * height, 0.0f);
 
@@ -99,21 +82,16 @@ void separableConvolution(
 // Compute the Difference of Gaussians with threshold
 void computeDoG(
     const uint8_t* input, uint8_t* output, int h, int w,
-    float sigma1, float sigma2, int kernelSize,
+    float* kernel1, float* kernel2, int kernelSize,
     float threshold = -1, int numThreads = -1) {
 
     if (numThreads <= 0)
         numThreads = std::thread::hardware_concurrency();
 
-    auto kernel1 = generateGaussianKernel1D(kernelSize, sigma1);
-    auto kernel2 = generateGaussianKernel1D(kernelSize, sigma2);
-
     vector<uint8_t> blur1(h * w), blur2(h * w);
 
-    separableConvolution(input, blur1.data(), kernel1, w, h, numThreads);
-    separableConvolution(input, blur2.data(), kernel2, w, h, numThreads);
-
-    int minVal = 255, maxVal = 0;
+    separableConvolution(input, blur1.data(), kernel1, kernelSize, w, h, numThreads);
+    separableConvolution(input, blur2.data(), kernel2, kernelSize, w, h, numThreads);
 
     // Difference and intensity mapping
     auto dog_worker = [&](int start, int end) {
@@ -140,7 +118,6 @@ void computeDoG(
 
     if (threshold < 0) return;
     int z_thr = threshold * 255;
-    cerr << "min: " << minVal << " max: " << maxVal << " threshold: " << z_thr << endl;
 
     // Thresholding
     auto threshold_worker = [&](int start, int end) {

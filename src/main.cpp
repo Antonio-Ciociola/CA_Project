@@ -23,6 +23,24 @@ using cv::Size;
 using std::chrono::high_resolution_clock;
 using std::chrono::duration;
 
+// Generate 1D Gaussian kernel
+vector<float> generateGaussianKernel1D(int size, float sigma) {
+    vector<float> kernel(size);
+    int half = size / 2;
+    float sum = 0.0f;
+
+    for (int i = -half; i <= half; ++i) {
+        float value = exp(-(i * i) / (2 * sigma * sigma));
+        kernel[i + half] = value;
+        sum += value;
+    }
+
+    // Normalize
+    for (float &val : kernel)
+        val /= sum;
+
+    return kernel;
+}
 
 int main(int argc, char** argv) {
     unsigned width, height;
@@ -88,6 +106,12 @@ int main(int argc, char** argv) {
     duration<double> total_writer_elapsed(0);
     duration<double> total_total_elapsed(0);
 
+    // Generate Gaussian kernels
+    vector<float> kernel1_vec = generateGaussianKernel1D(kernelSize, sigma1);
+    float* kernel1 = kernel1_vec.data();
+    vector<float> kernel2_vec = generateGaussianKernel1D(kernelSize, sigma2);
+    float* kernel2 = kernel2_vec.data();
+
     // Process each frame and measure time for each step
     auto read_start = high_resolution_clock::now();
     while (cap.read(frame)) {
@@ -99,7 +123,7 @@ int main(int argc, char** argv) {
 
         // Apply computeDoG
         computeDoG(grayFrame.data, dog, frameHeight, frameWidth,
-            sigma1, sigma2, kernelSize, threshold, numThreads);
+            kernel1, kernel2, kernelSize, threshold, numThreads);
         auto computeDoG_end = high_resolution_clock::now();
 
         // Write each fram
