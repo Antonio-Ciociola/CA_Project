@@ -7,10 +7,12 @@ using std::cerr;
 using std::endl;
 
 __constant__ float d_kernel[64];
-__device__ int KSIZE;
-__device__ int WIDTH;
-__device__ int HEIGHT;
-__device__ int THRESHOLD;
+__constant__ int KSIZE;
+__constant__ int WIDTH;
+__constant__ int HEIGHT;
+__constant__ int THRESHOLD;
+
+#define clamp(x, min, max) ((x) < (min) ? (min) : ((x) > (max) ? (max) : (x)))
 
 __global__ void blur_horizontal(const unsigned char *input, unsigned char *output, float *d_kernel)
 {
@@ -57,13 +59,10 @@ __global__ void sumScale(const unsigned char *input1, const unsigned char *input
     int x = blockIdx.x * blockDim.x + threadIdx.x;
     int y = blockIdx.y * blockDim.y + threadIdx.y;
 
-    if (x >= width || y >= height)
+    if (x >= WIDTH || y >= HEIGHT)
         return;
-
-    output[y * width + x] = input1[y * width + x] - input2[y * width + x];
-    output[y * width + x] = 255 - 20 * output[y * width + x];
-    output[y * width + x] = min(max(output[y * width + x], 0), 255);
-    output[y * width + x] = output > THRESHOLD ? 255 : 0;
+    unsigned char val = clamp(255 - 20*(int(input1[y * WIDTH + x]) - int(input2[y * WIDTH + x])), 0, 255);
+    output[y * WIDTH + x] = val > THRESHOLD ? 255 : 0;
 }
 
 void gaussian_blur_cuda(const uint8_t *input, uint8_t *output, int width, int height, float *kernel1, float *kernel2, int ksize, int threshold)
@@ -71,15 +70,18 @@ void gaussian_blur_cuda(const uint8_t *input, uint8_t *output, int width, int he
 
     // cudaMemcpyToSymbol(d_kernel, h_kernel.data(), sizeof(float) * ksize);
 
-    uint8_t *d_input, *d_temp, *d_output, *d_kernel1, *d_kernel2, *d_out1, *d_out2;
+    uint8_t *d_input, *d_temp, *d_output , *d_out1, *d_out2;
+    float *d_kernel1, *d_kernel2;
     size_t img_size = width * height;
     size_t kernel_size = ksize * ksize;
 
-    KSIZE = kernelsSize;
-    WIDTH = width;
-    HEIGHT = height;
-    THRESHOLD = threshold;
-
+    cudaFree(0); // 
+    cudaMemcpyToSymbol(KSIZE, &ksize, sizeof(int));
+    cudaMemcpyToSymbol(WIDTH, &width, sizeof(int));
+    cudaMemcpyToSymbol(HEIGHT, &height, sizeof(int));
+    cudaMemcpyToSymbol(THRESHOLD, &threshold, sizeof(int));
+    
+    
     cudaMalloc(&d_input, img_size);
     cudaMalloc(&d_temp, img_size);
     cudaMalloc(&d_out1, img_size);
@@ -92,8 +94,8 @@ void gaussian_blur_cuda(const uint8_t *input, uint8_t *output, int width, int he
     cudaMemcpy(d_kernel1, kernel1, sizeof(float) * kernel_size, cudaMemcpyHostToDevice);
     cudaMemcpy(d_kernel2, kernel2, sizeof(float) * kernel_size, cudaMemcpyHostToDevice);
 
-    dim3 block(16, 16);
-    dim3 grid((width + 15) / 16, (height + 15) / 16);
+    dim3 block(5, 5);
+    dim3 grid((width + 4) / 5, (height + 4) / 5);
 
     blur_horizontal<<<grid, block>>>(d_input, d_temp, d_kernel1);
     blur_vertical<<<grid, block>>>(d_temp, d_out1, d_kernel1);
@@ -111,8 +113,6 @@ void gaussian_blur_cuda(const uint8_t *input, uint8_t *output, int width, int he
     cudaFree(d_kernel1);
     cudaFree(d_kernel2);
 
-    /*
     if(cudaGetLastError() != cudaSuccess)
         cerr << "CUDA Error: " << cudaGetErrorString(cudaGetLastError()) << endl;
-    */
 }

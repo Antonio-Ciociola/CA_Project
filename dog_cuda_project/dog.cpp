@@ -21,27 +21,41 @@ extern void gaussian_blur_cuda(
     int width, int height, float sigma, int kernelSize);
 
 
+extern void gaussian_blur_cuda(const uint8_t *input, uint8_t *output, int width, int height, float *kernel1, float *kernel2, int ksize, int threshold);
+
+
+// Generate 1D Gaussian kernel
+vector<float> generateGaussianKernel1D(int size, float sigma) {
+    vector<float> kernel(size);
+    int half = size / 2;
+    float sum = 0.0f;
+
+    for (int i = -half; i <= half; ++i) {
+        float value = exp(-(i * i) / (2 * sigma * sigma));
+        kernel[i + half] = value;
+        sum += value;
+    }
+
+    // Normalize
+    for (float &val : kernel)
+        val /= sum;
+
+    return kernel;
+}
+
 void computeDoG(
     const uint8_t* input, uint8_t* output, int h, int w,
     float sigma1, float sigma2, int kernelSize, float threshold = -1,int numThreads = -1) {
 
-    vector<uint8_t> blur1(w * h), blur2(w * h);
+    // Generate Gaussian kernels
+    vector<float> kernel1 = generateGaussianKernel1D(kernelSize, sigma1);
+    vector<float> kernel2 = generateGaussianKernel1D(kernelSize, sigma2);
 
-    gaussian_blur_cuda(input, blur1.data(), w, h, sigma1, kernelSize);
-    gaussian_blur_cuda(input, blur2.data(), w, h, sigma2, kernelSize);
 
-    int min = 255, max = 0;
-    for(int i = 0; i < w * h; ++i){
-        output[i] = clamp(255 - 20*(blur1[i] - blur2[i]), 0, 255);
-        if (output[i] < min) min = output[i];
-        if (output[i] > max) max = output[i];
-    }
-
-    // apply threshold
-    if (threshold < 0) return;
-    int z_thr = threshold * (max - min) + min;
-    cerr << min << " " << max << " " << threshold << " " << z_thr << endl;
-
-    for(int i = 0; i < w * h; ++i)
-        output[i] = (output[i] >= z_thr) ? 255 : 0;
+    auto time1 = std::chrono::high_resolution_clock::now();
+    gaussian_blur_cuda(input, output, w, h, kernel1.data(), kernel2.data(), kernelSize, int(threshold * 255));
+    auto time2 = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = time2 - time1;
+    cout << "Elapsed time for Gaussian blur: " << elapsed.count() << " seconds" << endl;
+    cout << w << " " << h << " " << kernelSize << " " << sigma1 << " " << sigma2 << endl;
 }
