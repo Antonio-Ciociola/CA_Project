@@ -15,6 +15,23 @@ using std::exp;
 
 #define clamp(x, min, max) ((x) < (min) ? (min) : ((x) > (max) ? (max) : (x)))
 
+uint8_t* temp1;
+uint8_t* temp2;
+float* kernel1;
+float* kernel2;
+int kernelSize;
+float threshold;
+
+void initialize(int height, int width, float* k1, float* k2, int ksize, float th = -1) {
+    // Initialize global variables for kernel and threshold
+    kernel1 = k1;
+    kernel2 = k2;
+    kernelSize = ksize;
+    threshold = th;
+    temp1 = new uint8_t[height * width];
+    temp2 = new uint8_t[height * width];
+}
+
 // Separable convolution (horizontal then vertical)
 void separableConvolution(
     const uint8_t* input, uint8_t* output,
@@ -78,21 +95,19 @@ void separableConvolution(
 // Compute the Difference of Gaussians with threshold
 void computeDoG(
     const uint8_t* input, uint8_t* output, int h, int w,
-    float* kernel1, float* kernel2, int kernelSize,
-    float threshold = -1, int numThreads = -1) {
+    float* _3, float* _4, int _5,
+    float _6 = -1, int numThreads = -1) {
 
     if (numThreads <= 0)
         numThreads = std::thread::hardware_concurrency();
 
-    vector<uint8_t> blur1(h * w), blur2(h * w);
-
-    separableConvolution(input, blur1.data(), kernel1, kernelSize, w, h, numThreads);
-    separableConvolution(input, blur2.data(), kernel2, kernelSize, w, h, numThreads);
+    separableConvolution(input, temp1, kernel1, kernelSize, w, h, numThreads);
+    separableConvolution(input, temp2, kernel2, kernelSize, w, h, numThreads);
 
     // Difference and intensity mapping
     auto dog_worker = [&](int start, int end) {
         for (int i = start; i < end; ++i) {
-            int val = clamp(255 - 20 * (blur2[i] - blur1[i]), 0, 255);
+            int val = clamp(255 - 20 * (temp2[i] - temp1[i]), 0, 255);
             output[i] = val;
         }
     };
@@ -129,4 +144,9 @@ void computeDoG(
     }
 
     for (auto& t : threads) t.join();
+}
+
+void finalize() {
+    delete[] temp1;
+    delete[] temp2;
 }

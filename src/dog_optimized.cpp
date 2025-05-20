@@ -13,6 +13,22 @@ using std::exp;
 
 #define clamp(x, min, max) ((x) < (min) ? (min) : ((x) > (max) ? (max) : (x)))
 
+uint8_t* temp1;
+uint8_t* temp2;
+float* kernel1;
+float* kernel2;
+int kernelSize;
+float threshold;
+
+void initialize(int height, int width, float* k1, float* k2, int ksize, float th = -1) {
+    kernel1 = k1;
+    kernel2 = k2;
+    kernelSize = ksize;
+    threshold = th;
+    temp1 = new uint8_t[height * width];
+    temp2 = new uint8_t[height * width];
+}
+
 // Perform separable convolution
 void convolveSeparable(
     const uint8_t* input, const float* kernel, int ksize,
@@ -49,15 +65,13 @@ void convolveSeparable(
 // Compute the Difference of Gaussians using separable convolution
 void computeDoG(
     const uint8_t* input, uint8_t* output, int h, int w,
-    float* kernel1, float* kernel2, int kernelSize, float threshold = -1, int numThreads = -1) {
+    float* _3, float* _4, int _5, float _6 = -1, int _7 = -1) {
 
-    vector<uint8_t> blur1(h * w), blur2(h * w);
-
-    convolveSeparable(input, kernel1, kernelSize, w, h, blur1.data());
-    convolveSeparable(input, kernel2, kernelSize, w, h, blur2.data());
+    convolveSeparable(input, kernel1, kernelSize, w, h, temp1);
+    convolveSeparable(input, kernel2, kernelSize, w, h, temp2);
 
     for (int i = 0; i < w * h; ++i) {
-        output[i] = clamp(255 - 20 * (blur2[i] - blur1[i]), 0, 255);
+        output[i] = clamp(255 - 20 * (temp2[i] - temp1[i]), 0, 255);
     }
 
     // Apply threshold if needed
@@ -66,4 +80,9 @@ void computeDoG(
 
     for (int i = 0; i < w * h; ++i)
         output[i] = (output[i] >= i_threshold) ? 255 : 0;
+}
+
+void finalize() {
+    delete[] temp1;
+    delete[] temp2;
 }

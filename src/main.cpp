@@ -119,6 +119,8 @@ int main(int argc, char** argv) {
     vector<float> kernel2_vec = generateGaussianKernel1D(kernelSize, sigma2);
     float* kernel2 = kernel2_vec.data();
 
+    initialize(frameHeight, frameWidth, kernel1, kernel2, kernelSize, threshold);
+
     // Process each frame and measure time for each step
     auto read_start = high_resolution_clock::now();
     while (cap.read(frame)) {
@@ -161,6 +163,7 @@ int main(int argc, char** argv) {
     cout << total_read_elapsed.count() << "\t" << total_gray_elapsed.count() << "\t" << total_dog_elapsed.count() << "\t" << total_writer_elapsed.count() << "\t" << total_total_elapsed.count() << endl;
 
     // Clean up and release resources
+    finalize();
     delete[] dog;
     cap.release();
     writer.release();
