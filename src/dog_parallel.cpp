@@ -23,6 +23,7 @@ using std::chrono::duration;
 
 uint8_t* temp1;
 uint8_t* temp2;
+float* temp;
 float* kernel1;
 float* kernel2;
 int kernelSize;
@@ -36,9 +37,10 @@ void initialize(int height, int width, float* k1, float* k2, int ksize, float th
     threshold = th;
     temp1 = new uint8_t[height * width];
     temp2 = new uint8_t[height * width];
+    temp = new float[height * width];
 }
 
-void h_worker(const uint8_t* input, vector<float>& temp, const float* kernel1D, int half, int width, int startY, int endY) {
+void h_worker(const uint8_t* input, float* temp, const float* kernel1D, int half, int width, int startY, int endY) {
     for (int y = startY; y < endY; ++y) {
         for (int x = 0; x < width; ++x) {
             float sum = 0.0f;
@@ -52,7 +54,7 @@ void h_worker(const uint8_t* input, vector<float>& temp, const float* kernel1D, 
 }
 
 
-void v_worker(const vector<float>& temp, uint8_t* output, const float* kernel1D, int half, int width, int height, int startY, int endY) {
+void v_worker(const float* temp, uint8_t* output, const float* kernel1D, int half, int width, int height, int startY, int endY) {
     for (int y = startY; y < endY; ++y) {
         for (int x = 0; x < width; ++x) {
             float sum = 0.0f;
@@ -86,21 +88,6 @@ void separableConvolution(
     int width, int height, int numThreads) {
 
     int half = ksize / 2;
-    vector<float> temp(width * height, 0.0f);
-/*
-    // Horizontal pass
-    auto h_worker = [&](int startY, int endY) {
-        for (int y = startY; y < endY; ++y) {
-            for (int x = 0; x < width; ++x) {
-                float sum = 0.0f;
-                for (int k = -half; k <= half; ++k) {
-                    int xk = clamp(x + k, 0, width - 1);
-                    sum += input[y * width + xk] * kernel1D[k + half];
-                }
-                temp[y * width + x] = sum;
-            }
-        }
-    };*/
 
     vector<std::thread> threads;
     int rowsPerThread = height / numThreads;
@@ -109,18 +96,17 @@ void separableConvolution(
     for (int i = 0; i < numThreads; ++i) {
         int startY = y;
         int endY = startY + rowsPerThread + (i < extra ? 1 : 0);
-        threads.emplace_back(h_worker, input, std::ref(temp), kernel1D, ksize/2, width, startY, endY);
+        threads.emplace_back(h_worker, input, temp, kernel1D, ksize/2, width, startY, endY);
         y = endY;
     }
     for (auto& t : threads) t.join();
     threads.clear();
 
-
     y = 0;
     for (int i = 0; i < numThreads; ++i) {
         int startY = y;
         int endY = startY + rowsPerThread + (i < extra ? 1 : 0);
-        threads.emplace_back(v_worker, std::ref(temp), output, kernel1D, ksize/2, width, height, startY, endY);
+        threads.emplace_back(v_worker, temp, output, kernel1D, ksize/2, width, height, startY, endY);
         y = endY;
     }
     for (auto& t : threads) t.join();

@@ -3,6 +3,7 @@
 #include <cmath>
 #include <cstdint>
 #include <string>
+#include <chrono>
 
 using std::vector;
 using std::string;
@@ -11,10 +12,14 @@ using std::cerr;
 using std::endl;
 using std::exp;
 
+using std::chrono::high_resolution_clock;
+using std::chrono::duration;
+
 #define clamp(x, min, max) ((x) < (min) ? (min) : ((x) > (max) ? (max) : (x)))
 
 uint8_t* temp1;
 uint8_t* temp2;
+float* temp;
 float* kernel1;
 float* kernel2;
 int kernelSize;
@@ -27,6 +32,7 @@ void initialize(int height, int width, float* k1, float* k2, int ksize, float th
     threshold = th;
     temp1 = new uint8_t[height * width];
     temp2 = new uint8_t[height * width];
+    temp = new float[height * width];
 }
 
 // Perform separable convolution
@@ -35,7 +41,6 @@ void convolveSeparable(
     int width, int height, uint8_t* output) {
 
     int half = ksize / 2;
-    vector<float> temp(width * height, 0.0f);
 
     // Horizontal pass
     for (int y = 0; y < height; ++y) {
@@ -45,7 +50,7 @@ void convolveSeparable(
                 int idx = clamp(x + k, 0, width - 1);
                 sum += input[y * width + idx] * kernel[k + half];
             }
-            temp[y * width + x] = sum;
+            temp[x * height + y] = sum;
         }
     }
 
@@ -82,4 +87,5 @@ void computeDoG(const uint8_t* input, uint8_t* output, int h, int w, int _ = -1)
 void finalize() {
     delete[] temp1;
     delete[] temp2;
+    delete[] temp;
 }
