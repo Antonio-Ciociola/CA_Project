@@ -11,6 +11,9 @@ __constant__ int WIDTH;
 __constant__ int HEIGHT;
 __constant__ int THRESHOLD;
 
+uint8_t *d_input, *d_temp, *d_output, *d_out1, *d_out2;
+float *d_kernel1, *d_kernel2;
+
 #define clamp(x, min, max) ((x) < (min) ? (min) : ((x) > (max) ? (max) : (x)))
 
 __global__ void blur_horizontal(const unsigned char *input, unsigned char *output, float *d_kernel){
@@ -54,11 +57,8 @@ __global__ void sumScale(const unsigned char *input1, const unsigned char *input
     output[y * WIDTH + x] = THRESHOLD < 0? val : (val > THRESHOLD ? 255 : 0);
 }
 
-void computeDoG(const uint8_t* input, uint8_t* output, int height, int width, float* kernel1, float* kernel2, int ksize, float threshold = -1, int _ = -1){
-    uint8_t *d_input, *d_temp, *d_output, *d_out1, *d_out2;
-    float *d_kernel1, *d_kernel2;
+void initialize(int height, int width, float* kernel1, float* kernel2, int ksize, float threshold = -1){
     size_t img_size = width * height;
-    size_t kernel_size = ksize * ksize;
     int i_threshold = threshold >= 0? int(threshold) : -1;
 
     cudaMemcpyToSymbol(KSIZE, &ksize, sizeof(int));
@@ -71,12 +71,16 @@ void computeDoG(const uint8_t* input, uint8_t* output, int height, int width, fl
     cudaMalloc(&d_out1, img_size);
     cudaMalloc(&d_out2, img_size);
     cudaMalloc(&d_output, img_size);
-    cudaMalloc(&d_kernel1, sizeof(float) * kernel_size);
-    cudaMalloc(&d_kernel2, sizeof(float) * kernel_size);
+    cudaMalloc(&d_kernel1, sizeof(float) * ksize);
+    cudaMalloc(&d_kernel2, sizeof(float) * ksize);
 
+    cudaMemcpy(d_kernel1, kernel1, sizeof(float) * ksize, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_kernel2, kernel2, sizeof(float) * ksize, cudaMemcpyHostToDevice);
+}
+
+void computeDoG(const uint8_t* input, uint8_t* output, int height, int width, float* _3, float* _4, int _5, float _6 = -1, int _7 = -1){
+    size_t img_size = width * height;
     cudaMemcpy(d_input, input, img_size, cudaMemcpyHostToDevice);
-    cudaMemcpy(d_kernel1, kernel1, sizeof(float) * kernel_size, cudaMemcpyHostToDevice);
-    cudaMemcpy(d_kernel2, kernel2, sizeof(float) * kernel_size, cudaMemcpyHostToDevice);
 
     dim3 block(32, 32);
     dim3 grid((width + 32 - 1) / 32, (height + 32 - 1) / 32);
@@ -91,6 +95,11 @@ void computeDoG(const uint8_t* input, uint8_t* output, int height, int width, fl
 
     cudaMemcpy(output, d_output, img_size, cudaMemcpyDeviceToHost);
 
+    if(cudaGetLastError() != cudaSuccess)
+        cerr << "CUDA Error: " << cudaGetErrorString(cudaGetLastError()) << endl;
+}
+
+void finalize(){
     cudaFree(d_input);
     cudaFree(d_temp);
     cudaFree(d_out1);
@@ -98,7 +107,4 @@ void computeDoG(const uint8_t* input, uint8_t* output, int height, int width, fl
     cudaFree(d_output);
     cudaFree(d_kernel1);
     cudaFree(d_kernel2);
-
-    if(cudaGetLastError() != cudaSuccess)
-        cerr << "CUDA Error: " << cudaGetErrorString(cudaGetLastError()) << endl;
 }

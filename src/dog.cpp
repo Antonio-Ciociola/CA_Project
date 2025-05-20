@@ -13,6 +13,13 @@ using std::exp;
 
 #define clamp(x, min, max) ((x) < (min) ? (min) : ((x) > (max) ? (max) : (x)))
 
+uint8_t* temp1;
+uint8_t* temp2;
+float* kernel1;
+float* kernel2;
+int kernelSize;
+float threshold;
+
 vector<float> generateGaussianKernel2D(float* kernel1, int size) {
     // multiply the 1D kernel with itself to create a 2D kernel
     vector<float> kernel(size * size);
@@ -22,6 +29,20 @@ vector<float> generateGaussianKernel2D(float* kernel1, int size) {
         }
     }
     return kernel;
+}
+
+void initialize(int height, int width, float* k1, float* k2, int ksize, float th = -1) {
+    // Initialize global variables for kernel and threshold
+    kernel1 = new float[ksize * ksize];
+    kernel2 = new float[ksize * ksize];
+    auto kernel1_2D = generateGaussianKernel2D(k1, ksize);
+    auto kernel2_2D = generateGaussianKernel2D(k2, ksize);
+    std::copy(kernel1_2D.begin(), kernel1_2D.end(), kernel1);
+    std::copy(kernel2_2D.begin(), kernel2_2D.end(), kernel2);
+    kernelSize = ksize;
+    threshold = th;
+    temp1 = new uint8_t[height * width];
+    temp2 = new uint8_t[height * width];
 }
 
 // Convolve image with kernel
@@ -52,17 +73,13 @@ void convolve(
 // otherwise, it shall be at most 1.0f
 void computeDoG(
     const uint8_t* input, uint8_t* output, int h, int w,
-    float* kernel1, float* kernel2, int kernelSize, float threshold = -1,int numThreads = -1) {
+    float* _3, float* _4, int _5, float _6 = -1,int _7 = -1) {
 
-    auto kernel1_2D = generateGaussianKernel2D(kernel1, kernelSize);
-    auto kernel2_2D = generateGaussianKernel2D(kernel2, kernelSize);
-
-    vector<uint8_t> blur1(h * w), blur2(h * w);
-    convolve(input, kernel1_2D.data(), w, h, kernelSize, blur1.data());
-    convolve(input, kernel2_2D.data(), w, h, kernelSize, blur2.data());
+    convolve(input, kernel1, w, h, kernelSize, temp1);
+    convolve(input, kernel2, w, h, kernelSize, temp2);
 
     for(int i = 0; i < w * h; ++i){
-        output[i] = clamp(255 - 20*(blur2[i] - blur1[i]), 0, 255);
+        output[i] = clamp(255 - 20*(temp2[i] - temp1[i]), 0, 255);
     }
 
     // apply threshold
@@ -71,4 +88,9 @@ void computeDoG(
 
     for(int i = 0; i < w * h; ++i)
         output[i] = (output[i] >= z_thr) ? 255 : 0;
+}
+
+void finalize() {
+    delete[] temp1;
+    delete[] temp2;
 }
