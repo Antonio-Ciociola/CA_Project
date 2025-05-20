@@ -4,17 +4,17 @@ CXXFLAGS := -std=c++11 $(PKG_CFLAGS)
 
 all: dog dog_optimized dog_parallel dog_gpu
 
-dog: src/main.cpp src/dog.cpp src/png_util.cpp src/lodepng.cpp
+dog: src/main.cpp src/dog.cpp src/dog.h src/png_util.cpp src/png_util.h src/lodepng.cpp src/lodepng.h
 	g++ $(CXXFLAGS) src/main.cpp src/dog.cpp src/png_util.cpp src/lodepng.cpp -o dog $(PKG_LIBS)
 
-dog_optimized: src/main.cpp src/dog_optimized.cpp src/png_util.cpp src/lodepng.cpp
+dog_optimized: src/main.cpp src/dog_optimized.cpp src/dog.h src/png_util.cpp src/png_util.h src/lodepng.cpp src/lodepng.h
 	g++ $(CXXFLAGS) src/main.cpp src/dog_optimized.cpp src/png_util.cpp src/lodepng.cpp -o dog_optimized $(PKG_LIBS)
 
-dog_parallel: src/main.cpp src/dog_parallel.cpp src/png_util.cpp src/lodepng.cpp
+dog_parallel: src/main.cpp src/dog_parallel.cpp src/dog.h src/png_util.cpp src/png_util.h src/lodepng.cpp src/lodepng.h
 	g++ $(CXXFLAGS) src/main.cpp src/dog_parallel.cpp src/png_util.cpp src/lodepng.cpp -o dog_parallel $(PKG_LIBS)
 
-dog_gpu: dog_cuda_project/gaussian_blur.cu dog_cuda_project/dog.cpp dog_cuda_project/lodepng.cpp src/main.cpp src/png_util.cpp
-	nvcc $(CXXFLAGS) dog_cuda_project/gaussian_blur.cu dog_cuda_project/dog.cpp dog_cuda_project/lodepng.cpp src/main.cpp src/png_util.cpp -o dog_gpu $(PKG_LIBS)
+dog_gpu: src/main.cpp src/dog_cuda.cu src/dog.h src/png_util.cpp src/png_util.h src/lodepng.cpp src/lodepng.h
+	nvcc $(CXXFLAGS) src/main.cpp src/dog_cuda.cu src/png_util.cpp src/lodepng.cpp -o dog_gpu $(PKG_LIBS)
 
 clean:
 	rm -f dog dog_optimized dog_parallel dog_gpu

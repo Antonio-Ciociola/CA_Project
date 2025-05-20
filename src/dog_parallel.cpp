@@ -5,8 +5,6 @@
 #include <cmath>
 #include <cstdint>
 #include <string>
-#include "lodepng.h"
-#include "png_util.h"
 
 using std::vector;
 using std::string;
@@ -15,9 +13,7 @@ using std::cerr;
 using std::endl;
 using std::exp;
 
-int clamp(int value, int minval, int maxval) {
-    return (value < minval) ? minval : (value > maxval) ? maxval : value;
-}
+#define clamp(x, min, max) ((x) < (min) ? (min) : ((x) > (max) ? (max) : (x)))
 
 // Separable convolution (horizontal then vertical)
 void separableConvolution(

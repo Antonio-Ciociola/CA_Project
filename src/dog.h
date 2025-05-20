@@ -1,12 +1,7 @@
 #ifndef DOG_H
 #define DOG_H
 
-#include <vector>
 #include <cstdint>
-#include <opencv2/opencv.hpp>
-
-
-using std::vector;
 
 // Compute the Difference of Gaussians
 void computeDoG(

@@ -3,8 +3,6 @@
 #include <cmath>
 #include <cstdint>
 #include <string>
-#include "lodepng.h"
-#include "png_util.h"
 
 using std::vector;
 using std::string;
@@ -13,13 +11,11 @@ using std::cerr;
 using std::endl;
 using std::exp;
 
-int clamp(int value, int minval, int maxval) {
-    return (value < minval) ? minval : (value > maxval) ? maxval : value;
-}
+#define clamp(x, min, max) ((x) < (min) ? (min) : ((x) > (max) ? (max) : (x)))
 
 // Perform separable convolution
 void convolveSeparable(
-    const uint8_t* input, const float * kernel, int ksize,
+    const uint8_t* input, const float* kernel, int ksize,
     int width, int height, uint8_t* output) {
 
     int half = ksize / 2;
@@ -66,8 +62,8 @@ void computeDoG(
 
     // Apply threshold if needed
     if (threshold < 0) return;
-    int z_thr = 255 * threshold;
+    int i_threshold = 255 * threshold;
 
     for (int i = 0; i < w * h; ++i)
-        output[i] = (output[i] >= z_thr) ? 255 : 0;
+        output[i] = (output[i] >= i_threshold) ? 255 : 0;
 }

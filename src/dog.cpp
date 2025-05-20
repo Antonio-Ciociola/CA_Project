@@ -3,8 +3,6 @@
 #include <cmath>
 #include <cstdint>
 #include <string>
-#include "lodepng.h"
-#include "png_util.h"
 
 using std::vector;
 using std::string;
@@ -13,28 +11,7 @@ using std::cerr;
 using std::endl;
 using std::exp;
 
-int clamp(int value, int minval, int maxval) {
-	return (value < minval) ? minval : (value > maxval) ? maxval : value;
-}
-
-// Generate a Gaussian kernel
-vector<float> generateGaussianKernel(int size, float sigma) {
-    vector<float> kernel;
-    kernel.reserve(size * size);
-    float sum = 0.0;
-    int half = size / 2;
-
-    for (int i = -half; i <= half; ++i) {
-        for (int j = -half; j <= half; ++j) {
-            float value = exp(-(i * i + j * j) / (2 * sigma * sigma));
-            kernel.push_back(value);
-            sum += value;
-        }
-    }
-    for(int i = 0; i < size * size; ++i)
-        kernel[i] /= sum;
-    return kernel;
-}
+#define clamp(x, min, max) ((x) < (min) ? (min) : ((x) > (max) ? (max) : (x)))
 
 vector<float> generateGaussianKernel2D(float* kernel1, int size) {
     // multiply the 1D kernel with itself to create a 2D kernel

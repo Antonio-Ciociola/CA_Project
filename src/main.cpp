@@ -14,6 +14,11 @@ using std::cout;
 using std::cerr;
 using std::endl;
 using std::exp;
+using std::min;
+using std::max;
+using std::stof;
+using std::stoi;
+using std::swap;
 
 using cv::VideoCapture;
 using cv::VideoWriter;
@@ -44,6 +49,8 @@ vector<float> generateGaussianKernel1D(int size, float sigma) {
 
 int main(int argc, char** argv) {
     unsigned width, height;
+    cout << std::fixed << std::setprecision(6);
+    cerr << std::fixed << std::setprecision(6);
 
     if (argc < 2) {
         cerr << "Usage: " << argv[0] << " <input_video.mp4> [output_video.mp4] [sigma1] [sigma2] [threshold] [numThreads]" << endl;
@@ -55,20 +62,20 @@ int main(int argc, char** argv) {
 
     float sigma1 = 1.0f, sigma2 = 2.0f, threshold = -1, numThreads = -1;
     if (argc > 3) {
-        sigma1 = std::stof(argv[3]);
-        sigma2 = (argc > 4) ? std::stof(argv[4]) : 2 * sigma1;
-        if (sigma1 > sigma2) std::swap(sigma1, sigma2);
+        sigma1 = stof(argv[3]);
+        sigma2 = (argc > 4) ? stof(argv[4]) : 2 * sigma1;
+        if (sigma1 > sigma2) swap(sigma1, sigma2);
     }
 
     // Ensure kernel size is odd and proportional to sigma
     int kernelSize = int(2 * sigma2) | 1;
 
     if (argc > 5) {
-        threshold = std::min(std::stof(argv[5]), 1.0f);
+        threshold = min(stof(argv[5]), 1.0f);
     }
 
     if (argc > 6) {
-        numThreads = std::stoi(argv[6]);
+        numThreads = stoi(argv[6]);
     }
 
     // Open the input video
@@ -126,7 +133,7 @@ int main(int argc, char** argv) {
             kernel1, kernel2, kernelSize, threshold, numThreads);
         auto computeDoG_end = high_resolution_clock::now();
 
-        // Write each fram
+        // Write each frame
         cv::Mat frame = cv::Mat(frameHeight, frameWidth, CV_8UC1, dog);
         writer.write(frame);
 
