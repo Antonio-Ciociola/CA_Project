@@ -6,12 +6,18 @@
 #include <cstdint>
 #include <string>
 
+#include <chrono>
+
+
 using std::vector;
 using std::string;
 using std::cout;
 using std::cerr;
 using std::endl;
 using std::exp;
+
+using std::chrono::high_resolution_clock;
+using std::chrono::duration;
 
 #define clamp(x, min, max) ((x) < (min) ? (min) : ((x) > (max) ? (max) : (x)))
 
@@ -32,6 +38,47 @@ void initialize(int height, int width, float* k1, float* k2, int ksize, float th
     temp2 = new uint8_t[height * width];
 }
 
+void h_worker(const uint8_t* input, vector<float>& temp, const float* kernel1D, int half, int width, int startY, int endY) {
+    for (int y = startY; y < endY; ++y) {
+        for (int x = 0; x < width; ++x) {
+            float sum = 0.0f;
+            for (int k = -half; k <= half; ++k) {
+                int xk = clamp(x + k, 0, width - 1);
+                sum += input[y * width + xk] * kernel1D[k + half];
+            }
+            temp[y * width + x] = sum;
+        }
+    }
+}
+
+
+void v_worker(const vector<float>& temp, uint8_t* output, const float* kernel1D, int half, int width, int height, int startY, int endY) {
+    for (int y = startY; y < endY; ++y) {
+        for (int x = 0; x < width; ++x) {
+            float sum = 0.0f;
+            for (int k = -half; k <= half; ++k) {
+                int yk = clamp(y + k, 0, height - 1);
+                sum += temp[yk * width + x] * kernel1D[k + half];
+            }
+            output[y * width + x] = clamp(int(sum), 0, 255);
+        }
+    }
+}
+
+
+void dog_worker(const uint8_t* temp1, const uint8_t* temp2, uint8_t* output, int start, int end) {
+    for (int i = start; i < end; ++i) {
+        int val = clamp(255 - 20 * (temp2[i] - temp1[i]), 0, 255);
+        output[i] = val;
+    }
+}
+
+void threshold_worker(uint8_t* output, int z_thr, int start, int end) {
+    for (int i = start; i < end; ++i) {
+        output[i] = (output[i] >= z_thr) ? 255 : 0;
+    }
+}
+
 // Separable convolution (horizontal then vertical)
 void separableConvolution(
     const uint8_t* input, uint8_t* output,
@@ -40,7 +87,7 @@ void separableConvolution(
 
     int half = ksize / 2;
     vector<float> temp(width * height, 0.0f);
-
+/*
     // Horizontal pass
     auto h_worker = [&](int startY, int endY) {
         for (int y = startY; y < endY; ++y) {
@@ -53,7 +100,7 @@ void separableConvolution(
                 temp[y * width + x] = sum;
             }
         }
-    };
+    };*/
 
     vector<std::thread> threads;
     int rowsPerThread = height / numThreads;
@@ -62,31 +109,18 @@ void separableConvolution(
     for (int i = 0; i < numThreads; ++i) {
         int startY = y;
         int endY = startY + rowsPerThread + (i < extra ? 1 : 0);
-        threads.emplace_back(h_worker, startY, endY);
+        threads.emplace_back(h_worker, input, std::ref(temp), kernel1D, ksize/2, width, startY, endY);
         y = endY;
     }
     for (auto& t : threads) t.join();
     threads.clear();
 
-    // Vertical pass
-    auto v_worker = [&](int startY, int endY) {
-        for (int y = startY; y < endY; ++y) {
-            for (int x = 0; x < width; ++x) {
-                float sum = 0.0f;
-                for (int k = -half; k <= half; ++k) {
-                    int yk = clamp(y + k, 0, height - 1);
-                    sum += temp[yk * width + x] * kernel1D[k + half];
-                }
-                output[y * width + x] = clamp(int(sum), 0, 255);
-            }
-        }
-    };
 
     y = 0;
     for (int i = 0; i < numThreads; ++i) {
         int startY = y;
         int endY = startY + rowsPerThread + (i < extra ? 1 : 0);
-        threads.emplace_back(v_worker, startY, endY);
+        threads.emplace_back(v_worker, std::ref(temp), output, kernel1D, ksize/2, width, height, startY, endY);
         y = endY;
     }
     for (auto& t : threads) t.join();
@@ -96,17 +130,9 @@ void separableConvolution(
 void computeDoG(const uint8_t* input, uint8_t* output, int h, int w, int numThreads = -1) {
     if (numThreads <= 0)
         numThreads = std::thread::hardware_concurrency();
-
+    
     separableConvolution(input, temp1, kernel1, kernelSize, w, h, numThreads);
     separableConvolution(input, temp2, kernel2, kernelSize, w, h, numThreads);
-
-    // Difference and intensity mapping
-    auto dog_worker = [&](int start, int end) {
-        for (int i = start; i < end; ++i) {
-            int val = clamp(255 - 20 * (temp2[i] - temp1[i]), 0, 255);
-            output[i] = val;
-        }
-    };
 
     vector<std::thread> threads;
     int pixelsPerThread = (w * h) / numThreads;
@@ -115,27 +141,20 @@ void computeDoG(const uint8_t* input, uint8_t* output, int h, int w, int numThre
 
     for (int i = 0; i < numThreads; ++i) {
         int end = start + pixelsPerThread + (i < extra ? 1 : 0);
-        threads.emplace_back(dog_worker, start, end);
+        threads.emplace_back(dog_worker, temp1, temp2, output, start, end);
         start = end;
     }
 
     for (auto& t : threads) t.join();
     threads.clear();
 
-
     if (threshold < 0) return;
     int z_thr = threshold * 255;
-
-    // Thresholding
-    auto threshold_worker = [&](int start, int end) {
-        for (int i = start; i < end; ++i)
-            output[i] = (output[i] >= z_thr) ? 255 : 0;
-    };
 
     start = 0;
     for (int i = 0; i < numThreads; ++i) {
         int end = start + pixelsPerThread + (i < extra ? 1 : 0);
-        threads.emplace_back(threshold_worker, start, end);
+        threads.emplace_back(threshold_worker, output, z_thr, start, end);
         start = end;
     }
 
