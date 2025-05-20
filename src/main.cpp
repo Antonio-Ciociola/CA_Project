@@ -131,8 +131,7 @@ int main(int argc, char** argv) {
         auto grayscale_end = high_resolution_clock::now();
 
         // Apply computeDoG
-        computeDoG(grayFrame.data, dog, frameHeight, frameWidth,
-            kernel1, kernel2, kernelSize, threshold, numThreads);
+        computeDoG(grayFrame.data, dog, frameHeight, frameWidth, numThreads);
         auto computeDoG_end = high_resolution_clock::now();
 
         // Write each frame

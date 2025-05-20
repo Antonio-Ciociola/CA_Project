@@ -63,10 +63,7 @@ void convolveSeparable(
 }
 
 // Compute the Difference of Gaussians using separable convolution
-void computeDoG(
-    const uint8_t* input, uint8_t* output, int h, int w,
-    float* _3, float* _4, int _5, float _6 = -1, int _7 = -1) {
-
+void computeDoG(const uint8_t* input, uint8_t* output, int h, int w, int _ = -1) {
     convolveSeparable(input, kernel1, kernelSize, w, h, temp1);
     convolveSeparable(input, kernel2, kernelSize, w, h, temp2);
 

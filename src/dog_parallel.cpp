@@ -93,11 +93,7 @@ void separableConvolution(
 }
 
 // Compute the Difference of Gaussians with threshold
-void computeDoG(
-    const uint8_t* input, uint8_t* output, int h, int w,
-    float* _3, float* _4, int _5,
-    float _6 = -1, int numThreads = -1) {
-
+void computeDoG(const uint8_t* input, uint8_t* output, int h, int w, int numThreads = -1) {
     if (numThreads <= 0)
         numThreads = std::thread::hardware_concurrency();
 
