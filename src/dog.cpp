@@ -71,10 +71,7 @@ void convolve(
 // Compute the Difference of Gaussians
 // if threshold is set to a negative value, it will not be applied
 // otherwise, it shall be at most 1.0f
-void computeDoG(
-    const uint8_t* input, uint8_t* output, int h, int w,
-    float* _3, float* _4, int _5, float _6 = -1,int _7 = -1) {
-
+void computeDoG(const uint8_t* input, uint8_t* output, int h, int w, int _ = -1) {
     convolve(input, kernel1, w, h, kernelSize, temp1);
     convolve(input, kernel2, w, h, kernelSize, temp2);
 

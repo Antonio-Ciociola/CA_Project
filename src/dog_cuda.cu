@@ -78,7 +78,7 @@ void initialize(int height, int width, float* kernel1, float* kernel2, int ksize
     cudaMemcpy(d_kernel2, kernel2, sizeof(float) * ksize, cudaMemcpyHostToDevice);
 }
 
-void computeDoG(const uint8_t* input, uint8_t* output, int height, int width, float* _3, float* _4, int _5, float _6 = -1, int _7 = -1){
+void computeDoG(const uint8_t* input, uint8_t* output, int height, int width, int _ = -1){
     size_t img_size = width * height;
     cudaMemcpy(d_input, input, img_size, cudaMemcpyHostToDevice);
 
