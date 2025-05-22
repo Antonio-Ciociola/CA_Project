@@ -201,20 +201,23 @@ int main(int argc, char** argv) {
 
     // Process each frame and measure time for each step
     auto read_start = high_resolution_clock::now();
-    while (cap.read(frame)) {
+    int j = 0;
+
+    uint8_t* frame_test = new uint8_t[frameWidth * frameHeight];
+    while (j < 10) {
         auto read_end = high_resolution_clock::now();
         
         // Convert to grayscale
-        cv::cvtColor(frame, grayFrame, cv::COLOR_BGR2GRAY);
+        // cv::cvtColor(frame, grayFrame, cv::COLOR_BGR2GRAY);
         auto grayscale_end = high_resolution_clock::now();
 
         // Apply computeDoG
-        computeDoG(grayFrame.data, dog, frameHeight, frameWidth, numThreads);
+        computeDoG(frame_test, dog, frameHeight, frameWidth, numThreads);
         auto computeDoG_end = high_resolution_clock::now();
 
         // Write each frame
-        cv::Mat frame = cv::Mat(frameHeight, frameWidth, CV_8UC1, dog);
-        writer.write(frame);
+        //cv::Mat frame = cv::Mat(frameHeight, frameWidth, CV_8UC1, dog);
+        //writer.write(frame);
 
         auto frame_end = high_resolution_clock::now();
 
