@@ -53,12 +53,12 @@ int main(int argc, char** argv) {
     cerr << std::fixed << std::setprecision(6);
 
     if (argc < 2) {
-        cerr << "Usage: " << argv[0] << " <input_video.mp4> [output_video.mp4] [sigma1] [sigma2] [threshold] [numThreads]" << endl;
+        cerr << "Usage: " << argv[0] << " <input_file> [output_file] [sigma1] [sigma2] [threshold] [numThreads]" << endl;
         return 1;
     }
 
-    string inputVideo = argv[1];
-    string outputVideo = (argc > 2) ? argv[2] : "output.mp4";
+    string inputFile = argv[1];
+    string outputFile = (argc > 2) ? argv[2] : "output.png";
 
     float sigma1 = 1.0f, sigma2 = 2.0f, threshold = -1, numThreads = -1;
     if (argc > 3) {
@@ -77,6 +77,55 @@ int main(int argc, char** argv) {
     if (argc > 6) {
         numThreads = stoi(argv[6]);
     }
+
+    // Check if input is an image or video
+    bool isImage = inputFile.substr(inputFile.find_last_of(".") + 1) != "mp4";
+
+    if (isImage) {
+        // Process image
+        Mat image = cv::imread(inputFile, cv::IMREAD_GRAYSCALE);
+        if (image.empty()) {
+            cerr << "Error: Could not open input image " << inputFile << endl;
+            return 1;
+        }
+
+        int frameHeight = image.rows;
+        int frameWidth = image.cols;
+
+        // Allocate memory for DoG output
+        uint8_t* dog = new uint8_t[frameWidth * frameHeight];
+
+        // Generate Gaussian kernels
+        vector<float> kernel1_vec = generateGaussianKernel1D(kernelSize, sigma1);
+        float* kernel1 = kernel1_vec.data();
+        vector<float> kernel2_vec = generateGaussianKernel1D(kernelSize, sigma2);
+        float* kernel2 = kernel2_vec.data();
+
+        initialize(frameHeight, frameWidth, kernel1, kernel2, kernelSize, threshold);
+
+        // Apply computeDoG
+        computeDoG(image.data, dog, frameHeight, frameWidth, numThreads);
+
+        // Save the result
+        Mat outputImage(frameHeight, frameWidth, CV_8UC1, dog);
+        if (!cv::imwrite(outputFile, outputImage)) {
+            cerr << "Error: Could not write output image " << outputFile << endl;
+            delete[] dog;
+            finalize();
+            return 1;
+        }
+
+        // Clean up
+        delete[] dog;
+        finalize();
+
+        cout << "Image processing completed successfully." << endl;
+        return 0;
+    }
+
+    string inputVideo = argv[1];
+    string outputVideo = (argc > 2) ? argv[2] : "output.mp4";
+
 
     // Open the input video
     VideoCapture cap(inputVideo);
