@@ -102,36 +102,81 @@ int main(int argc, char** argv) {
 
         auto read_start_img = high_resolution_clock::now();
 
-        Mat image = cv::imread(inputFile, cv::IMREAD_GRAYSCALE);
-        if (image.empty()) {
-            cerr << "Error: Could not open input image " << inputFile << endl;
-            return 1;
-        }
+        uint8_t* image_data = nullptr;
+        int frameHeight = 0;
+        int frameWidth = 0;
 
-        int frameHeight = image.rows;
-        int frameWidth = image.cols;
+        if(inputFile.find(".raw") != string::npos) {
+            // Read raw image
+            FILE* file = fopen(inputFile.c_str(), "rb");
+            if (!file) {
+                cerr << "Error: Could not open input file " << inputFile << endl;
+                return 1;
+            }
+
+            fread(&frameHeight, sizeof(int), 1, file);
+            fread(&frameWidth, sizeof(int), 1, file);
+
+            image_data = new uint8_t[frameHeight * frameWidth];
+            fread(image_data, sizeof(uint8_t), frameHeight * frameWidth, file);
+            fclose(file);
+        }
+        else {
+            Mat image = cv::imread(inputFile, cv::IMREAD_GRAYSCALE);
+            if (image.empty()) {
+                cerr << "Error: Could not open input image " << inputFile << endl;
+                return 1;
+            }
+
+            int frameHeight = image.rows;
+            int frameWidth = image.cols;
+            image_data = image.data;
+        }
 
         // Allocate memory for DoG output
         uint8_t* dog = new uint8_t[frameWidth * frameHeight];
-
-        
 
         initialize(frameHeight, frameWidth, kernel1, kernel2, kernelSize, threshold);
 
         auto read_end_img = high_resolution_clock::now();
 
+        // // fwrite the image
+        // FILE* file = fopen("raw_image.raw", "wb");
+        // if (file) {
+        //     fwrite(&frameHeight, sizeof(int), 1, file);
+        //     fwrite(&frameWidth, sizeof(int), 1, file);
+        //     fwrite(image.data, sizeof(uint8_t), frameWidth * frameHeight, file);
+        //     fclose(file);
+        // }
+
         // Apply computeDoG
-        computeDoG(image.data, dog, frameHeight, frameWidth, numThreads);
+        computeDoG(image_data, dog, frameHeight, frameWidth, numThreads);
 
         auto computeDoG_end_img = high_resolution_clock::now();
 
-        // Save the result
-        Mat outputImage(frameHeight, frameWidth, CV_8UC1, dog);
-        if (!cv::imwrite(outputFile, outputImage)) {
-            cerr << "Error: Could not write output image " << outputFile << endl;
-            delete[] dog;
-            finalize();
-            return 1;
+        if(inputFile.find(".raw") != string::npos) {
+            // Save the result as a raw image
+            FILE* file = fopen(outputFile.c_str(), "wb");
+            if (!file) {
+                cerr << "Error: Could not write output file " << outputFile << endl;
+                delete[] dog;
+                return 1;
+            }
+
+            fwrite(&frameHeight, sizeof(int), 1, file);
+            fwrite(&frameWidth, sizeof(int), 1, file);
+            fwrite(dog, sizeof(uint8_t), frameWidth * frameHeight, file);
+            fclose(file);
+            delete[] image_data;
+        } else {
+            // Save the result
+            Mat outputImage(frameHeight, frameWidth, CV_8UC1, dog);
+            if (!cv::imwrite(outputFile, outputImage)) {
+                cerr << "Error: Could not write output image " << outputFile << endl;
+                delete[] dog;
+                finalize();
+                return 1;
+            }
         }
 
         auto write_end_img = high_resolution_clock::now();
