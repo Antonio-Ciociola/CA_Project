@@ -28,6 +28,12 @@ using cv::Size;
 using std::chrono::high_resolution_clock;
 using std::chrono::duration;
 
+void conditionalPrint(bool flag, const std::string& message) {
+    if (flag) {
+        cout << message << endl;
+    }
+}
+
 // Generate 1D Gaussian kernel
 vector<float> generateGaussianKernel1D(int size, float sigma) {
     vector<float> kernel(size);
@@ -60,7 +66,7 @@ int main(int argc, char** argv) {
     string inputFile = argv[1];
     string outputFile = (argc > 2) ? argv[2] : "output.png";
 
-    float sigma1 = 1.0f, sigma2 = 2.0f, threshold = -1, numThreads = -1;
+    float sigma1 = 1.0f, sigma2 = 2.0f, threshold = -1, numThreads = -1, printDebug = 1;
     if (argc > 3) {
         sigma1 = stof(argv[3]);
         sigma2 = (argc > 4) ? stof(argv[4]) : 2 * sigma1;
@@ -78,11 +84,24 @@ int main(int argc, char** argv) {
         numThreads = stoi(argv[6]);
     }
 
+    if (argc > 7) {
+        printDebug = stoi(argv[7]);
+    }
+
     // Check if input is an image or video
     bool isImage = inputFile.substr(inputFile.find_last_of(".") + 1) != "mp4";
 
     if (isImage) {
         // Process image
+
+        // Generate Gaussian kernels
+        vector<float> kernel1_vec = generateGaussianKernel1D(kernelSize, sigma1);
+        float* kernel1 = kernel1_vec.data();
+        vector<float> kernel2_vec = generateGaussianKernel1D(kernelSize, sigma2);
+        float* kernel2 = kernel2_vec.data();
+
+        auto read_start_img = high_resolution_clock::now();
+
         Mat image = cv::imread(inputFile, cv::IMREAD_GRAYSCALE);
         if (image.empty()) {
             cerr << "Error: Could not open input image " << inputFile << endl;
@@ -95,16 +114,16 @@ int main(int argc, char** argv) {
         // Allocate memory for DoG output
         uint8_t* dog = new uint8_t[frameWidth * frameHeight];
 
-        // Generate Gaussian kernels
-        vector<float> kernel1_vec = generateGaussianKernel1D(kernelSize, sigma1);
-        float* kernel1 = kernel1_vec.data();
-        vector<float> kernel2_vec = generateGaussianKernel1D(kernelSize, sigma2);
-        float* kernel2 = kernel2_vec.data();
+        
 
         initialize(frameHeight, frameWidth, kernel1, kernel2, kernelSize, threshold);
 
+        auto read_end_img = high_resolution_clock::now();
+
         // Apply computeDoG
         computeDoG(image.data, dog, frameHeight, frameWidth, numThreads);
+
+        auto computeDoG_end_img = high_resolution_clock::now();
 
         // Save the result
         Mat outputImage(frameHeight, frameWidth, CV_8UC1, dog);
@@ -115,11 +134,21 @@ int main(int argc, char** argv) {
             return 1;
         }
 
+        auto write_end_img = high_resolution_clock::now();
+
         // Clean up
         delete[] dog;
         finalize();
 
-        cout << "Image processing completed successfully." << endl;
+        if (printDebug) {
+            duration<double> read_elapsed = read_end_img - read_start_img;
+            duration<double> dog_elapsed = computeDoG_end_img - read_end_img;
+            duration<double> write_elapsed = write_end_img - computeDoG_end_img;
+
+            cout << "Read\tDoG\tWrite" << endl;
+            cout << read_elapsed.count() << "\t" << dog_elapsed.count() << "\t" << write_elapsed.count() << endl;
+        }
+
         return 0;
     }
 
@@ -172,20 +201,23 @@ int main(int argc, char** argv) {
 
     // Process each frame and measure time for each step
     auto read_start = high_resolution_clock::now();
-    while (cap.read(frame)) {
+    int j = 0;
+
+    uint8_t* frame_test = new uint8_t[frameWidth * frameHeight];
+    while (j < 10) {
         auto read_end = high_resolution_clock::now();
         
         // Convert to grayscale
-        cv::cvtColor(frame, grayFrame, cv::COLOR_BGR2GRAY);
+        // cv::cvtColor(frame, grayFrame, cv::COLOR_BGR2GRAY);
         auto grayscale_end = high_resolution_clock::now();
 
         // Apply computeDoG
-        computeDoG(grayFrame.data, dog, frameHeight, frameWidth, numThreads);
+        computeDoG(frame_test, dog, frameHeight, frameWidth, numThreads);
         auto computeDoG_end = high_resolution_clock::now();
 
         // Write each frame
-        cv::Mat frame = cv::Mat(frameHeight, frameWidth, CV_8UC1, dog);
-        writer.write(frame);
+        //cv::Mat frame = cv::Mat(frameHeight, frameWidth, CV_8UC1, dog);
+        //writer.write(frame);
 
         auto frame_end = high_resolution_clock::now();
 
@@ -202,14 +234,18 @@ int main(int argc, char** argv) {
         total_writer_elapsed += writer_elapsed;
         total_total_elapsed += total_elapsed;
 
-        cout << read_elapsed.count() << "\t" << gray_elapsed.count() << "\t" << dog_elapsed.count() << "\t" << writer_elapsed.count() << "\t" << total_elapsed.count() << endl;
+        if (printDebug)
+            cout << read_elapsed.count() << "\t" << gray_elapsed.count() << "\t" << dog_elapsed.count() << "\t" << writer_elapsed.count() << "\t" << total_elapsed.count() << endl;
 
         // Reset read start for the next frame
         read_start = high_resolution_clock::now(); 
     }
-    cout << "Read\tGrayscale\tDoG\tWriter\tTotal" << endl;
-    cout << total_read_elapsed.count() << "\t" << total_gray_elapsed.count() << "\t" << total_dog_elapsed.count() << "\t" << total_writer_elapsed.count() << "\t" << total_total_elapsed.count() << endl;
 
+    if (printDebug) {
+        cout << "Read\tGrayscale\tDoG\tWriter\tTotal" << endl;
+        cout << total_read_elapsed.count() << "\t" << total_gray_elapsed.count() << "\t" << total_dog_elapsed.count() << "\t" << total_writer_elapsed.count() << "\t" << total_total_elapsed.count() << endl;
+    }
+    
     // Clean up and release resources
     finalize();
     delete[] dog;
