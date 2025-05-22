@@ -32,24 +32,21 @@ __global__ void blur_horizontal(const unsigned char *input, unsigned char *outpu
     extern __shared__ unsigned char tile[];
 
     int half = KSIZE / 2;
+    unsigned char *tile_p = &tile[(ty + half) * tile_width + tx + half];
 
     int left = clamp(x - half, 0, WIDTH - 1);
     int right = clamp(x + half, 0, WIDTH - 1);
 
-    int left_tile = clamp(tx - half, 0, tile_width - 1);
-    int right_tile = clamp(tx + half, 0, tile_width - 1);
-
-    tile[tx + ty * tile_width] = input[y * WIDTH + x];
-    tile[right_tile + ty * tile_width] = input[y * WIDTH + right];
-    tile[left_tile + ty * tile_width] = input[y * WIDTH + left];
+    tile_p[0] = input[y * WIDTH + x];
+    tile_p[+half] = input[y * WIDTH + right];
+    tile_p[-half] = input[y * WIDTH + left];
     __syncthreads();
 
     float sum = 0.0f;
 
     for (int i = -half; i <= half; ++i)
     {
-        int ix = clamp(tx + i, 0, tile_width - 1);
-        sum += input[ty * tile_width + ix] * d_kernel[i + half];
+        sum += tile_p[i] * d_kernel[i + half];
     }
 
     output[y * WIDTH + x] = (unsigned char)(sum);
@@ -70,15 +67,14 @@ __global__ void blur_vertical(const unsigned char *input, unsigned char *output,
 
     int half = KSIZE / 2;
 
+    unsigned char *tile_p = &tile[(ty + half) * tile_width + tx + half];
+
     int left = clamp(y - half, 0, HEIGHT - 1);
     int right = clamp(y + half, 0, HEIGHT - 1);
 
-    int left_tile = clamp(ty - half, 0, tile_height - 1);
-    int right_tile = clamp(ty + half, 0, tile_height - 1);
-
-    tile[ty * tile_width + tx] = input[y * WIDTH + x];
-    tile[right_tile * tile_width + tx] = input[right * WIDTH + x];
-    tile[left_tile * tile_width + tx] = input[left * WIDTH + x];
+    tile_p[0] = input[y * WIDTH + x];
+    tile_p[+half * tile_width] = input[right * WIDTH + x];
+    tile_p[-half * tile_width] = input[left * WIDTH + x];
 
     __syncthreads();
 
@@ -86,8 +82,7 @@ __global__ void blur_vertical(const unsigned char *input, unsigned char *output,
 
     for (int i = -half; i <= half; ++i)
     {
-        int iy = clamp(ty + i, 0, tile_height - 1);
-        sum += tile[iy * tile_width + tx] * d_kernel[i + half];
+        sum += tile_p[i * tile_width] * d_kernel[i + half];
     }
 
     output[y * WIDTH + x] = (unsigned char)(sum);
@@ -136,8 +131,8 @@ void computeDoG(const uint8_t *input, uint8_t *output, int height, int width, in
     dim3 block(xBlock, yBlock);
     dim3 grid((width + 32 - 1) / 32, (height + 32 - 1) / 32);
 
-    int sharedWidth = block.x + KSIZE + 2;
-    int sharedHeight = block.y + KSIZE + 2;
+    int sharedWidth = block.x + KSIZE + 30;
+    int sharedHeight = block.y + KSIZE + 30;
     int sharedMemSize = sharedWidth * sharedHeight * sizeof(unsigned char);
 
     cudaMemcpyToSymbol(tile_width, &sharedWidth, sizeof(int));
