@@ -40,7 +40,7 @@ __global__ void blur_horizontal(const uint8_t *input, float2 *output, float *d_k
     output[y * WIDTH + x].y = (unsigned char)(sum.y);
 }
 
-__global__ void blur_vertical(const float2 *input, float2 *output, float *d_kernel1, float *d_kernel2)
+__global__ void blur_vertical(const float2 *input, uint8_t *output, float *d_kernel1, float *d_kernel2)
 {
     int x = blockIdx.x * blockDim.x + threadIdx.x;
     int y = blockIdx.y * blockDim.y + threadIdx.y;
@@ -59,8 +59,8 @@ __global__ void blur_vertical(const float2 *input, float2 *output, float *d_kern
         sum.y += input[iy * WIDTH + x].y * d_kernel2[i + half];
     }
 
-    output[y * WIDTH + x].x = (unsigned char)(sum.x);
-    output[y * WIDTH + x].y = (unsigned char)(sum.y);
+    unsigned char val = clamp(255 - 20*(int(sum.y) - int(sum.x)), 0, 255);
+    output[y * WIDTH + x] = THRESHOLD < 0? val : (val > THRESHOLD ? 255 : 0);
 }
 
 __global__ void sumScale(const float2 *input, unsigned char *output)
@@ -109,9 +109,7 @@ void computeDoG(const uint8_t *input, uint8_t *output, int height, int width, in
 
     blur_horizontal<<<grid, block>>>(d_input, d_temp, d_kernel1, d_kernel2);
 
-    blur_vertical<<<grid, block>>>(d_temp, d_out, d_kernel1, d_kernel2);
-
-    // sumScale<<<grid, block>>>(d_out, d_output);
+    blur_vertical<<<grid, block>>>(d_temp, d_output, d_kernel1, d_kernel2);
 
     cudaMemcpy(output, d_output, img_size, cudaMemcpyDeviceToHost);
 
