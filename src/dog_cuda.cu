@@ -1,3 +1,4 @@
+#include <cuda_fp16.h>
 #include <cuda_runtime.h>
 #include <vector>
 #include <cmath>
@@ -22,7 +23,7 @@ __global__ void blur_horizontal(const unsigned char *input, float *output){
     int y = blockIdx.y * blockDim.y + threadIdx.y;
     if (x >= WIDTH || y >= HEIGHT) return;
 
-    float sum = 0.0f;
+    __half sum = 0.0f;
     int half = KSIZE / 2;
 
     for (int i = -half; i <= half; ++i){
@@ -37,7 +38,7 @@ __global__ void blur_horizontal2(const unsigned char *input, float *output){
     int y = blockIdx.y * blockDim.y + threadIdx.y;
     if (x >= WIDTH || y >= HEIGHT) return;
 
-    float sum = 0.0f;
+    __half sum = 0.0f;
     int half = KSIZE / 2;
 
     for (int i = -half; i <= half; ++i){
