@@ -11,12 +11,13 @@ __constant__ int WIDTH;
 __constant__ int HEIGHT;
 __constant__ int THRESHOLD;
 
-uint8_t *d_input, *d_temp, *d_output, *d_out1, *d_out2;
+uint8_t *d_input, *d_output;
+float *d_temp, *d_out1, *d_out2;
 float *d_kernel1, *d_kernel2;
 
 #define clamp(x, min, max) ((x) < (min) ? (min) : ((x) > (max) ? (max) : (x)))
 
-__global__ void blur_horizontal(const unsigned char *input, unsigned char *output, float *d_kernel){
+__global__ void blur_horizontal(const unsigned char *input, float *output, float *d_kernel){
     int x = blockIdx.x * blockDim.x + threadIdx.x;
     int y = blockIdx.y * blockDim.y + threadIdx.y;
     if (x >= WIDTH || y >= HEIGHT) return;
@@ -29,10 +30,10 @@ __global__ void blur_horizontal(const unsigned char *input, unsigned char *outpu
         sum += input[y * WIDTH + ix] * d_kernel[i + half];
     }
 
-    output[y * WIDTH + x] = (unsigned char)(sum);
+    output[y * WIDTH + x] = sum;
 }
 
-__global__ void blur_vertical(const unsigned char *input, unsigned char *output, float *d_kernel){
+__global__ void blur_vertical(const float *input, float *output, float *d_kernel){
     int x = blockIdx.x * blockDim.x + threadIdx.x;
     int y = blockIdx.y * blockDim.y + threadIdx.y;
     if (x >= WIDTH || y >= HEIGHT) return;
@@ -45,15 +46,15 @@ __global__ void blur_vertical(const unsigned char *input, unsigned char *output,
         sum += input[iy * WIDTH + x] * d_kernel[i + half];
     }
 
-    output[y * WIDTH + x] = (unsigned char)(sum);
+    output[y * WIDTH + x] = sum;
 }
 
-__global__ void sumScale(const unsigned char *input1, const unsigned char *input2, unsigned char *output){
+__global__ void sumScale(const float *input1, const float *input2, unsigned char *output){
     int x = blockIdx.x * blockDim.x + threadIdx.x;
     int y = blockIdx.y * blockDim.y + threadIdx.y;
     if (x >= WIDTH || y >= HEIGHT) return;
 
-    unsigned char val = clamp(255 - 20*(int(input2[y * WIDTH + x]) - int(input1[y * WIDTH + x])), 0, 255);
+    unsigned char val = clamp(255 - 20*(input2[y * WIDTH + x] - input1[y * WIDTH + x]), 0, 255);
     output[y * WIDTH + x] = THRESHOLD < 0? val : (val > THRESHOLD ? 255 : 0);
 }
 
@@ -67,9 +68,9 @@ void initialize(int height, int width, float* kernel1, float* kernel2, int ksize
     cudaMemcpyToSymbol(THRESHOLD, &i_threshold, sizeof(int));
     
     cudaMalloc(&d_input, img_size);
-    cudaMalloc(&d_temp, img_size);
-    cudaMalloc(&d_out1, img_size);
-    cudaMalloc(&d_out2, img_size);
+    cudaMalloc(&d_temp, sizeof(float) * img_size);
+    cudaMalloc(&d_out1, sizeof(float) * img_size);
+    cudaMalloc(&d_out2, sizeof(float) * img_size);
     cudaMalloc(&d_output, img_size);
     cudaMalloc(&d_kernel1, sizeof(float) * ksize);
     cudaMalloc(&d_kernel2, sizeof(float) * ksize);
@@ -82,8 +83,11 @@ void computeDoG(const uint8_t* input, uint8_t* output, int height, int width, in
     size_t img_size = width * height;
     cudaMemcpy(d_input, input, img_size, cudaMemcpyHostToDevice);
 
-    dim3 block(32, 32);
-    dim3 grid((width + 32 - 1) / 32, (height + 32 - 1) / 32);
+
+    int xth=32, yth=32;
+
+    dim3 block(xth, yth);
+    dim3 grid((width + xth - 1) / xth, (height + yth - 1) / yth);
 
     blur_horizontal<<<grid, block>>>(d_input, d_temp, d_kernel1);
     blur_vertical<<<grid, block>>>(d_temp, d_out1, d_kernel1);
@@ -95,8 +99,9 @@ void computeDoG(const uint8_t* input, uint8_t* output, int height, int width, in
 
     cudaMemcpy(output, d_output, img_size, cudaMemcpyDeviceToHost);
 
-    if(cudaGetLastError() != cudaSuccess)
-        cerr << "CUDA Error: " << cudaGetErrorString(cudaGetLastError()) << endl;
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess)
+        std::cerr << "CUDA Error: " << cudaGetErrorString(err) << std::endl;
 }
 
 void finalize(){
