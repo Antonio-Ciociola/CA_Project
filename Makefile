@@ -29,6 +29,6 @@ dog_gpu_pair: src/main.cpp src/dog_cuda_pair.cu src/dog.h src/png_util.cpp src/p
 	nvcc $(CXXFLAGS) src/main.cpp src/dog_cuda_pair.cu src/png_util.cpp src/lodepng.cpp -o dog_gpu_pair $(PKG_LIBS)
 
 clean:
-	rm -f dog dog_optimized dog_parallel dog_gpu rawtojpg
+	rm -f dog dog_optimized dog_parallel dog_gpu dog_gpu_new* dog_gpu_pair rawtojpg
 	rm -f outputs/*
 	rm -f *.mp4 *.png

@@ -53,16 +53,16 @@ void convolveSeparable(
             temp[x * height + y] = sum;
         }
     }
-
-    // Vertical pass
+    std::swap(width, height);
+    // "Horizontal" pass (on the transposed image)
     for (int y = 0; y < height; ++y) {
         for (int x = 0; x < width; ++x) {
             float sum = 0.0f;
             for (int k = -half; k <= half; ++k) {
-                int idy = clamp(y + k, 0, height - 1);
-                sum += temp[idy * width + x] * kernel[k + half];
+                int idx = clamp(x + k, 0, width - 1);
+                sum += temp[y * width + idx] * kernel[k + half];
             }
-            output[y * width + x] = clamp(int(sum), 0, 255);
+            output[x * height + y] = clamp(int(sum), 0, 255);
         }
     }
 }

@@ -1,0 +1,217 @@
+#include <cuda_runtime.h>
+#include <vector>
+#include <cmath>
+#include <cstdint>
+#include <iostream>
+using std::cerr;
+using std::endl;
+
+// T=sabato mattina questo programma è rotto ma lo pusho lo stesso almeno così tutti abbiamo tutto e non esplode il makefile
+
+__constant__ int KSIZE;
+__constant__ int WIDTH;
+__constant__ int HEIGHT;
+__constant__ int THRESHOLD;
+
+__constant__ int tile_width;
+__constant__ int tile_height;
+
+uint8_t *d_input, *d_temp, *d_output, *d_out1, *d_out2;
+float *d_kernel1, *d_kernel2;
+
+#define clamp(x, min, max) ((x) < (min) ? (min) : ((x) > (max) ? (max) : (x)))
+
+__global__ void blur_horizontal(const unsigned char *input, unsigned char *output, float *d_kernel) {
+    int tx = threadIdx.x;
+    int ty = threadIdx.y;
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+
+    int half = KSIZE / 2;
+    int sharedIdx = threadIdx.x + half;
+
+    // Size of shared memory = blockDim.x + 2 * half
+    __shared__ unsigned char s_data[32][32 + 2 * 13];
+
+    // Load center pixel
+    if (x < WIDTH && y < HEIGHT)
+        s_data[ty][sharedIdx] = input[y * WIDTH + x];
+
+    // Load halo left
+    if (threadIdx.x < half) {
+        int left = max(x - half, 0);
+        s_data[ty][sharedIdx - half] = input[y * WIDTH + left];
+    }
+
+    // Load halo right
+    if (threadIdx.x >= blockDim.x - half) {
+        int right = min(x + half, WIDTH - 1);
+        s_data[ty][sharedIdx + half] = input[y * WIDTH + right];
+    }
+
+    __syncthreads();
+
+    if (x >= WIDTH || y >= HEIGHT) return;
+
+    float sum = 0.0f;
+    for (int i = -half; i <= half; ++i) {
+        sum += s_data[ty][sharedIdx + i] * d_kernel[i + half];
+    }
+
+    output[y * WIDTH + x] = (unsigned char)(sum);
+}
+
+
+__global__ void blur_vertical(const unsigned char *input, unsigned char *output, float *d_kernel)
+{
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+    if (x >= WIDTH || y >= HEIGHT)
+        return;
+
+    float sum = 0.0f;
+    int half = KSIZE / 2;
+
+    for (int i = -half; i <= half; ++i)
+    {
+        int iy = clamp(y + i, 0, HEIGHT - 1);
+        sum += input[iy * WIDTH + x] * d_kernel[i + half];
+    }
+
+    output[y * WIDTH + x] = (unsigned char)(sum);
+}
+
+__global__ void blur(const unsigned char *input, unsigned char *output, const float *d_kernel, const int width, const int height)
+{
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+    if (x >= width || y >= height)
+        return;
+
+    float sum = 0.0f;
+    int half = KSIZE / 2;
+
+    for (int i = -half; i <= half; ++i)
+    {
+        int ix = clamp(x + i, 0, width - 1);
+        sum += input[ix * width + y] * d_kernel[i + half];
+    }
+
+    output[y * width + x] = (unsigned char)(sum);
+}
+
+
+__global__ void blur_horizontal_local(const unsigned char *input, unsigned char *output, float *d_kernel)
+{
+    int tx = threadIdx.x;
+    int ty = threadIdx.y;
+
+    int x = blockIdx.x * blockDim.x + tx;
+    int y = blockIdx.y * blockDim.y + ty;
+    if (x >= WIDTH || y >= HEIGHT)
+        return;
+
+    extern __shared__ unsigned char tile[];
+
+    int half = KSIZE / 2;
+    unsigned char *tile_p = &tile[ty * tile_width + tx + half];
+
+    int left = clamp(x - half, 0, WIDTH - 1);
+    int right = clamp(x + half, 0, WIDTH - 1);
+
+    tile_p[+half] = input[y * WIDTH + right];
+    tile_p[-half] = input[y * WIDTH + left];
+    __syncthreads();
+
+    float sum = 0.0f;
+
+    for (int i = -half; i <= half; ++i)
+    {
+        sum += tile_p[i] * d_kernel[i + half];
+    }
+
+    output[y * WIDTH + x] = (unsigned char)(sum);
+}
+
+__global__ void sumScale(const unsigned char *input1, const unsigned char *input2, unsigned char *output)
+{
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+    if (x >= WIDTH || y >= HEIGHT)
+        return;
+
+    unsigned char val = clamp(255 - 20 * (int(input2[y * WIDTH + x]) - int(input1[y * WIDTH + x])), 0, 255);
+    output[y * WIDTH + x] = THRESHOLD < 0 ? val : (val > THRESHOLD ? 255 : 0);
+}
+
+void initialize(int height, int width, float *kernel1, float *kernel2, int ksize, float threshold = -1)
+{
+    size_t img_size = width * height;
+    int i_threshold = threshold >= 0 ? int(threshold) : -1;
+
+    cudaMemcpyToSymbol(KSIZE, &ksize, sizeof(int));
+    cudaMemcpyToSymbol(WIDTH, &width, sizeof(int));
+    cudaMemcpyToSymbol(HEIGHT, &height, sizeof(int));
+    cudaMemcpyToSymbol(THRESHOLD, &i_threshold, sizeof(int));
+
+    cudaMalloc(&d_input, img_size);
+    cudaMalloc(&d_temp, img_size);
+    cudaMalloc(&d_out1, img_size);
+    cudaMalloc(&d_out2, img_size);
+    cudaMalloc(&d_output, img_size);
+    cudaMalloc(&d_kernel1, sizeof(float) * ksize);
+    cudaMalloc(&d_kernel2, sizeof(float) * ksize);
+
+    cudaMemcpy(d_kernel1, kernel1, sizeof(float) * ksize, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_kernel2, kernel2, sizeof(float) * ksize, cudaMemcpyHostToDevice);
+}
+
+void computeDoG(const uint8_t *input, uint8_t *output, int height, int width, int _ = -1)
+{
+    size_t img_size = width * height;
+    cudaMemcpy(d_input, input, img_size, cudaMemcpyHostToDevice);
+
+    const int xBlock = 32, yBlock = 2;
+    dim3 block(xBlock, yBlock);
+    dim3 grid((width + xBlock - 1) / xBlock, (height + yBlock - 1) / yBlock);
+
+
+    int sharedWidth = block.x + KSIZE * 2;
+    int sharedHeight = block.y;
+    int sharedMemSize = sharedWidth * sharedHeight * sizeof(unsigned char);
+
+    cudaMemcpyToSymbol(tile_width, &sharedWidth, sizeof(int));
+    cudaMemcpyToSymbol(tile_height, &sharedHeight, sizeof(int));
+
+
+    blur_horizontal_local<<<grid, block,sharedMemSize>>>(d_input, d_temp, d_kernel1);
+    blur<<<grid, block>>>(d_temp, d_out1, d_kernel1, height, width);
+
+    blur_horizontal<<<grid, block>>>(d_input, d_temp, d_kernel2);
+    blur_vertical<<<grid, block>>>(d_temp, d_out2, d_kernel2);
+
+    // blur<<<grid, block>>>(d_input, d_temp, d_kernel2, width, height);
+    // blur<<<grid, block>>>(d_temp, d_out2, d_kernel2, height, width);
+
+    const int xBlocksum = 32, yBlocksum = 2;
+    dim3 blocksum(xBlocksum, yBlocksum);
+    dim3 gridsum((width + xBlocksum - 1) / xBlocksum, (height + yBlocksum - 1) / yBlocksum);
+
+    sumScale<<<gridsum, blocksum>>>(d_out1, d_out2, d_output);
+
+    cudaMemcpy(output, d_output, img_size, cudaMemcpyDeviceToHost);
+
+    if (cudaGetLastError() != cudaSuccess)
+        cerr << "CUDA Error: " << cudaGetErrorString(cudaGetLastError()) << endl;
+}
+
+void finalize()
+{
+    cudaFree(d_input);
+    cudaFree(d_temp);
+    cudaFree(d_out1);
+    cudaFree(d_out2);
+    cudaFree(d_output);
+    cudaFree(d_kernel1);
+    cudaFree(d_kernel2);
+}
