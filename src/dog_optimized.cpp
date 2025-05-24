@@ -17,8 +17,8 @@ using std::chrono::duration;
 
 #define clamp(x, min, max) ((x) < (min) ? (min) : ((x) > (max) ? (max) : (x)))
 
-uint8_t* temp1;
-uint8_t* temp2;
+float* temp1;
+float* temp2;
 float* temp;
 float* kernel1;
 float* kernel2;
@@ -30,15 +30,15 @@ void initialize(int height, int width, float* k1, float* k2, int ksize, float th
     kernel2 = k2;
     kernelSize = ksize;
     threshold = th;
-    temp1 = new uint8_t[height * width];
-    temp2 = new uint8_t[height * width];
+    temp1 = new float[height * width];
+    temp2 = new float[height * width];
     temp = new float[height * width];
 }
 
 // Perform separable convolution
 void convolveSeparable(
     const uint8_t* input, const float* kernel, int ksize,
-    int width, int height, uint8_t* output) {
+    int width, int height, float* output) {
 
     int half = ksize / 2;
 
@@ -62,7 +62,7 @@ void convolveSeparable(
                 int idx = clamp(x + k, 0, width - 1);
                 sum += temp[y * width + idx] * kernel[k + half];
             }
-            output[x * height + y] = clamp(int(sum), 0, 255);
+            output[x * height + y] = clamp(sum, 0, 255);
         }
     }
 }

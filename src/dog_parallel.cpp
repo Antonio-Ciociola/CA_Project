@@ -21,8 +21,8 @@ using std::chrono::duration;
 
 #define clamp(x, min, max) ((x) < (min) ? (min) : ((x) > (max) ? (max) : (x)))
 
-uint8_t* temp1;
-uint8_t* temp2;
+float* temp1;
+float* temp2;
 float* temp;
 float* kernel1;
 float* kernel2;
@@ -35,8 +35,8 @@ void initialize(int height, int width, float* k1, float* k2, int ksize, float th
     kernel2 = k2;
     kernelSize = ksize;
     threshold = th;
-    temp1 = new uint8_t[height * width];
-    temp2 = new uint8_t[height * width];
+    temp1 = new float[height * width];
+    temp2 = new float[height * width];
     temp = new float[height * width];
 }
 
@@ -54,7 +54,7 @@ void h_worker(const uint8_t* input, float* temp, const float* kernel1D, int half
 }
 
 
-void v_worker(const float* temp, uint8_t* output, const float* kernel1D, int half, int width, int height, int startY, int endY) {
+void v_worker(const float* temp, float* output, const float* kernel1D, int half, int width, int height, int startY, int endY) {
     for (int y = startY; y < endY; ++y) {
         for (int x = 0; x < width; ++x) {
             float sum = 0.0f;
@@ -62,13 +62,13 @@ void v_worker(const float* temp, uint8_t* output, const float* kernel1D, int hal
                 int yk = clamp(y + k, 0, height - 1);
                 sum += temp[yk * width + x] * kernel1D[k + half];
             }
-            output[y * width + x] = clamp(int(sum), 0, 255);
+            output[y * width + x] = clamp(sum, 0, 255);
         }
     }
 }
 
 
-void dog_worker(const uint8_t* temp1, const uint8_t* temp2, uint8_t* output, int start, int end) {
+void dog_worker(const float* temp1, const float* temp2, uint8_t* output, int start, int end) {
     for (int i = start; i < end; ++i) {
         int val = clamp(255 - 20 * (temp2[i] - temp1[i]), 0, 255);
         output[i] = val;
@@ -83,7 +83,7 @@ void threshold_worker(uint8_t* output, int z_thr, int start, int end) {
 
 // Separable convolution (horizontal then vertical)
 void separableConvolution(
-    const uint8_t* input, uint8_t* output,
+    const uint8_t* input, float* output,
     const float* kernel1D, int ksize,
     int width, int height, int numThreads) {
 

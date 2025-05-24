@@ -13,8 +13,8 @@ using std::exp;
 
 #define clamp(x, min, max) ((x) < (min) ? (min) : ((x) > (max) ? (max) : (x)))
 
-uint8_t* temp1;
-uint8_t* temp2;
+float* temp1;
+float* temp2;
 float* kernel1;
 float* kernel2;
 int kernelSize;
@@ -41,15 +41,15 @@ void initialize(int height, int width, float* k1, float* k2, int ksize, float th
     std::copy(kernel2_2D.begin(), kernel2_2D.end(), kernel2);
     kernelSize = ksize;
     threshold = th;
-    temp1 = new uint8_t[height * width];
-    temp2 = new uint8_t[height * width];
+    temp1 = new float[height * width];
+    temp2 = new float[height * width];
 }
 
 // Convolve image with kernel
 void convolve(
     const uint8_t* image, const float* kernel,
     int width, int height, int ksize,
-    uint8_t* output) {
+    float* output) {
 
     int half = ksize / 2;
 
@@ -63,7 +63,7 @@ void convolve(
                     sum += image[iy*width + ix] * kernel[i*ksize + j];
                 }
             }
-            output[y*width + x] = clamp(int(sum), 0, 255);
+            output[y*width + x] = clamp(sum, 0, 255);
         }
     }
 }

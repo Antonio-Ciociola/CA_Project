@@ -12,6 +12,7 @@ dog_gpu_pair
 rawtojpg
 images/video_full.mp4
 images/video_10s.mp4
+images/*_edge.*
 output*
 iii*
 
