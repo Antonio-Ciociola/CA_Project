@@ -8,39 +8,43 @@
 #include "png_util.h"
 #include "dog.h"
 
-using std::vector;
-using std::string;
-using std::cout;
 using std::cerr;
+using std::cout;
 using std::endl;
 using std::exp;
-using std::min;
 using std::max;
+using std::min;
 using std::stof;
 using std::stoi;
+using std::string;
 using std::swap;
+using std::vector;
 
-using cv::VideoCapture;
-using cv::VideoWriter;
 using cv::Mat;
 using cv::Size;
+using cv::VideoCapture;
+using cv::VideoWriter;
 
-using std::chrono::high_resolution_clock;
 using std::chrono::duration;
+using std::chrono::high_resolution_clock;
 
-void conditionalPrint(bool flag, const std::string& message) {
-    if (flag) {
+void conditionalPrint(bool flag, const std::string &message)
+{
+    if (flag)
+    {
         cout << message << endl;
     }
 }
 
 // Generate 1D Gaussian kernel
-vector<float> generateGaussianKernel1D(int size, float sigma) {
+vector<float> generateGaussianKernel1D(int size, float sigma)
+{
     vector<float> kernel(size);
     int half = size / 2;
     float sum = 0.0f;
 
-    for (int i = -half; i <= half; ++i) {
+    for (int i = -half; i <= half; ++i)
+    {
         float value = exp(-(i * i) / (2 * sigma * sigma));
         kernel[i + half] = value;
         sum += value;
@@ -53,12 +57,14 @@ vector<float> generateGaussianKernel1D(int size, float sigma) {
     return kernel;
 }
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv)
+{
     unsigned width, height;
     cout << std::fixed << std::setprecision(6);
     cerr << std::fixed << std::setprecision(6);
 
-    if (argc < 2) {
+    if (argc < 2)
+    {
         cerr << "Usage: " << argv[0] << " <input_file> [output_file] [sigma1] [sigma2] [threshold] [numThreads]" << endl;
         return 1;
     }
@@ -67,49 +73,65 @@ int main(int argc, char** argv) {
     string outputFile = (argc > 2) ? argv[2] : "output.png";
 
     float sigma1 = 1.0f, sigma2 = 2.0f, threshold = -1, numThreads = -1, printDebug = 1;
-    if (argc > 3) {
+    if (argc > 3)
+    {
         sigma1 = stof(argv[3]);
         sigma2 = (argc > 4) ? stof(argv[4]) : 2 * sigma1;
-        if (sigma1 > sigma2) swap(sigma1, sigma2);
+        if (sigma1 > sigma2)
+            swap(sigma1, sigma2);
     }
 
     // Ensure kernel size is odd and proportional to sigma
     int kernelSize = int(2 * sigma2) | 1;
+    int batchSize = 1; // Default batch size for image processing
 
-    if (argc > 5) {
+    if (argc > 5)
+    {
         threshold = min(stof(argv[5]), 1.0f);
     }
 
-    if (argc > 6) {
+    if (argc > 6)
+    {
         numThreads = stoi(argv[6]);
     }
 
-    if (argc > 7) {
+    if (argc > 7)
+    {
         printDebug = stoi(argv[7]);
+    }
+
+    if (argc > 8)
+    {
+        batchSize = stoi(argv[8]);
     }
 
     // Check if input is an image or video
     bool isImage = inputFile.substr(inputFile.find_last_of(".") + 1) != "mp4";
 
-    if (isImage) {
+    int frameHeight = 0;
+    int frameWidth = 0;
+    int frameSize = 0;
+
+    if (isImage)
+    {
         // Process image
 
         // Generate Gaussian kernels
         vector<float> kernel1_vec = generateGaussianKernel1D(kernelSize, sigma1);
-        float* kernel1 = kernel1_vec.data();
+        float *kernel1 = kernel1_vec.data();
         vector<float> kernel2_vec = generateGaussianKernel1D(kernelSize, sigma2);
-        float* kernel2 = kernel2_vec.data();
+        float *kernel2 = kernel2_vec.data();
 
         auto read_start_img = high_resolution_clock::now();
 
-        uint8_t* image_data = nullptr;
-        int frameHeight = 0;
-        int frameWidth = 0;
+        uint8_t *image_data = nullptr;
 
-        if(inputFile.find(".raw") != string::npos) {
+        if (inputFile.find(".raw") != string::npos)
+        {
             // Read raw image
-            FILE* file = fopen(inputFile.c_str(), "rb");
-            if (!file) {
+            FILE *file = fopen(inputFile.c_str(), "rb");
+            if (!file)
+            {
                 cerr << "Error: Could not open input file " << inputFile << endl;
                 return 1;
             }
@@ -117,26 +139,31 @@ int main(int argc, char** argv) {
             fread(&frameHeight, sizeof(int), 1, file);
             fread(&frameWidth, sizeof(int), 1, file);
 
-            image_data = new uint8_t[frameHeight * frameWidth];
-            fread(image_data, sizeof(uint8_t), frameHeight * frameWidth, file);
+            frameSize = frameHeight * frameWidth;
+
+            image_data = new uint8_t[frameSize];
+            fread(image_data, sizeof(uint8_t), frameSize, file);
             fclose(file);
         }
-        else {
+        else
+        {
             Mat image = cv::imread(inputFile, cv::IMREAD_GRAYSCALE);
-            if (image.empty()) {
+            if (image.empty())
+            {
                 cerr << "Error: Could not open input image " << inputFile << endl;
                 return 1;
             }
 
-            int frameHeight = image.rows;
-            int frameWidth = image.cols;
+            frameHeight = image.rows;
+            frameWidth = image.cols;
+            frameSize = frameHeight * frameWidth;
             image_data = image.data;
         }
 
         // Allocate memory for DoG output
-        uint8_t* dog = new uint8_t[frameWidth * frameHeight];
+        uint8_t *dog = new uint8_t[frameSize];
 
-        initialize(frameHeight, frameWidth, kernel1, kernel2, kernelSize, threshold);
+        initialize(frameHeight, frameWidth, batchSize, kernel1, kernel2, kernelSize, threshold);
 
         auto read_end_img = high_resolution_clock::now();
 
@@ -150,14 +177,16 @@ int main(int argc, char** argv) {
         // }
 
         // Apply computeDoG
-        computeDoG(image_data, dog, frameHeight, frameWidth, numThreads);
+        computeDoG(image_data, dog, batchSize, frameHeight, frameWidth, numThreads);
 
         auto computeDoG_end_img = high_resolution_clock::now();
 
-        if(inputFile.find(".raw") != string::npos) {
+        if (inputFile.find(".raw") != string::npos)
+        {
             // Save the result as a raw image
-            FILE* file = fopen(outputFile.c_str(), "wb");
-            if (!file) {
+            FILE *file = fopen(outputFile.c_str(), "wb");
+            if (!file)
+            {
                 cerr << "Error: Could not write output file " << outputFile << endl;
                 delete[] dog;
                 return 1;
@@ -168,10 +197,13 @@ int main(int argc, char** argv) {
             fwrite(dog, sizeof(uint8_t), frameWidth * frameHeight, file);
             fclose(file);
             delete[] image_data;
-        } else {
+        }
+        else
+        {
             // Save the result
             Mat outputImage(frameHeight, frameWidth, CV_8UC1, dog);
-            if (!cv::imwrite(outputFile, outputImage)) {
+            if (!cv::imwrite(outputFile, outputImage))
+            {
                 cerr << "Error: Could not write output image " << outputFile << endl;
                 delete[] dog;
                 finalize();
@@ -185,7 +217,8 @@ int main(int argc, char** argv) {
         delete[] dog;
         finalize();
 
-        if (printDebug) {
+        if (printDebug)
+        {
             duration<double> read_elapsed = read_end_img - read_start_img;
             duration<double> dog_elapsed = computeDoG_end_img - read_end_img;
             duration<double> write_elapsed = write_end_img - computeDoG_end_img;
@@ -200,34 +233,36 @@ int main(int argc, char** argv) {
     string inputVideo = argv[1];
     string outputVideo = (argc > 2) ? argv[2] : "output.mp4";
 
-
     // Open the input video
     VideoCapture cap(inputVideo);
-    if (!cap.isOpened()) {
+    if (!cap.isOpened())
+    {
         cerr << "Error: Could not open input video " << inputVideo << endl;
         return 1;
     }
 
     // Get video properties
-    int frameWidth = static_cast<int>(cap.get(cv::CAP_PROP_FRAME_WIDTH));
-    int frameHeight = static_cast<int>(cap.get(cv::CAP_PROP_FRAME_HEIGHT));
+    frameWidth = static_cast<int>(cap.get(cv::CAP_PROP_FRAME_WIDTH));
+    frameHeight = static_cast<int>(cap.get(cv::CAP_PROP_FRAME_HEIGHT));
+    frameSize = frameHeight * frameWidth;
     int fps = static_cast<int>(cap.get(cv::CAP_PROP_FPS));
 
     // Specify a compatible codec for MP4 (avc1)
     int codec = VideoWriter::fourcc('a', 'v', 'c', '1');
 
     // Create the output video writer
-    Size frameSize(frameWidth, frameHeight);
-    VideoWriter writer(outputVideo, codec, fps, frameSize, false); // false = grayscale
+    Size frameSiz(frameWidth, frameHeight);
+    VideoWriter writer(outputVideo, codec, fps, frameSiz, false); // false = grayscale
 
-    if (!writer.isOpened()) {
+    if (!writer.isOpened())
+    {
         cerr << "Error: Could not open the output video file." << endl;
         return -1;
     }
 
     // Allocate memory for the frames and DoG output
     Mat frame, grayFrame;
-    uint8_t* dog = new uint8_t[frameWidth * frameHeight];
+    uint8_t *dog = new uint8_t[frameSize * batchSize];
 
     // Initialize timing variables
     duration<double> total_read_elapsed(0);
@@ -238,30 +273,45 @@ int main(int argc, char** argv) {
 
     // Generate Gaussian kernels
     vector<float> kernel1_vec = generateGaussianKernel1D(kernelSize, sigma1);
-    float* kernel1 = kernel1_vec.data();
+    float *kernel1 = kernel1_vec.data();
     vector<float> kernel2_vec = generateGaussianKernel1D(kernelSize, sigma2);
-    float* kernel2 = kernel2_vec.data();
+    float *kernel2 = kernel2_vec.data();
 
-    initialize(frameHeight, frameWidth, kernel1, kernel2, kernelSize, threshold);
+    initialize(frameHeight, frameWidth, batchSize, kernel1, kernel2, kernelSize, threshold);
 
     // Process each frame and measure time for each step
     auto read_start = high_resolution_clock::now();
 
-    uint8_t* frame_test = new uint8_t[frameWidth * frameHeight];
-    while (cap.read(frame)) {
+    uint8_t *frame_test = new uint8_t[frameWidth * frameHeight];
+    while (cap.read(frame))
+    {
+
+        uint8_t *data = static_cast<uint8_t *>(malloc(frameHeight * frameWidth * batchSize * sizeof(uint8_t)));
+
+        int numFrames = 0;
+        do
+        {
+            // Convert to grayscale
+            cv::cvtColor(frame, grayFrame, cv::COLOR_BGR2GRAY);
+            memcpy(data + numFrames * frameSize, grayFrame.data, frameSize * sizeof(uint8_t));
+            numFrames++;
+        } while (numFrames < batchSize && cap.read(frame));
+
         auto read_end = high_resolution_clock::now();
-        
-        // Convert to grayscale
-        cv::cvtColor(frame, grayFrame, cv::COLOR_BGR2GRAY);
         auto grayscale_end = high_resolution_clock::now();
 
         // Apply computeDoG
-        computeDoG(grayFrame.data, dog, frameHeight, frameWidth, numThreads);
+        // cout<< "Processing " << numFrames << " frames..." << endl;
+        computeDoG(data, dog, numFrames, frameHeight, frameWidth, numThreads);
         auto computeDoG_end = high_resolution_clock::now();
 
-        // Write each frame
-        cv::Mat frame = cv::Mat(frameHeight, frameWidth, CV_8UC1, dog);
-        writer.write(frame);
+        for (int i = 0; i < numFrames; ++i)
+        {
+            // Write each frame
+            uint8_t *frame_data = dog + i * frameSize;
+            cv::Mat frame = cv::Mat(frameHeight, frameWidth, CV_8UC1, frame_data);
+            writer.write(frame);
+        }
 
         auto frame_end = high_resolution_clock::now();
 
@@ -282,14 +332,15 @@ int main(int argc, char** argv) {
             cout << read_elapsed.count() << "\t" << gray_elapsed.count() << "\t" << dog_elapsed.count() << "\t" << writer_elapsed.count() << "\t" << total_elapsed.count() << endl;
 
         // Reset read start for the next frame
-        read_start = high_resolution_clock::now(); 
+        read_start = high_resolution_clock::now();
     }
 
-    if (printDebug) {
+    if (printDebug)
+    {
         cout << "Read\tGrayscale\tDoG\tWriter\tTotal" << endl;
         cout << total_read_elapsed.count() << "\t" << total_gray_elapsed.count() << "\t" << total_dog_elapsed.count() << "\t" << total_writer_elapsed.count() << "\t" << total_total_elapsed.count() << endl;
     }
-    
+
     // Clean up and release resources
     finalize();
     delete[] dog;
