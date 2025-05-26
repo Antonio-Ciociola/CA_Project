@@ -98,7 +98,7 @@ __global__ void sumScale(const float *input1, const float *input2, unsigned char
     output[y * WIDTH + x] = THRESHOLD < 0? val : (val > THRESHOLD ? 255 : 0);
 }
 
-void initialize(int height, int width, float* kernel1, float* kernel2, int ksize, float threshold = -1){
+void initialize(int height, int width, float* kernel1, float* kernel2, int ksize, float threshold = -1, int _ = 1){
     size_t img_size = width * height;
     int i_threshold = threshold >= 0? int(threshold) : -1;
 
@@ -116,7 +116,7 @@ void initialize(int height, int width, float* kernel1, float* kernel2, int ksize
     cudaMalloc(&d_output, img_size);
 }
 
-void computeDoG(const uint8_t* input, uint8_t* output, int height, int width, int _ = -1){
+void computeDoG(const uint8_t* input, uint8_t* output, int height, int width, int _ = -1, int _2 = 1, int _3 = 32, int _4 = 2){
     size_t img_size = width * height;
     cudaMemcpy(d_input, input, img_size, cudaMemcpyHostToDevice);
 

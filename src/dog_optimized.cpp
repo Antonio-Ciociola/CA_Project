@@ -25,7 +25,7 @@ float* kernel2;
 int kernelSize;
 float threshold;
 
-void initialize(int height, int width, float* k1, float* k2, int ksize, float th = -1) {
+void initialize(int height, int width, float* k1, float* k2, int ksize, float th = -1, int _ = 1) {
     kernel1 = k1;
     kernel2 = k2;
     kernelSize = ksize;
@@ -68,7 +68,7 @@ void convolveSeparable(
 }
 
 // Compute the Difference of Gaussians using separable convolution
-void computeDoG(const uint8_t* input, uint8_t* output, int h, int w, int _ = -1) {
+void computeDoG(const uint8_t* input, uint8_t* output, int h, int w, int _ = -1, int _2 = 1, int _3 = 32, int _4 = 2) {
     convolveSeparable(input, kernel1, kernelSize, w, h, temp1);
     convolveSeparable(input, kernel2, kernelSize, w, h, temp2);
 

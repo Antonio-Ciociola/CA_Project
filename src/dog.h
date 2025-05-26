@@ -4,10 +4,10 @@
 #include <cstdint>
 
 // initialize memory and constant (across frames) parameters
-void initialize(int height, int width, int batchSize, float *kernel1, float *kernel2, int ksize, float threshold = -1);
+void initialize(int height, int width, float *kernel1, float *kernel2, int ksize, float threshold = -1, int batchSize = 1);
 
 // Compute the Difference of Gaussians
-void computeDoG(const uint8_t *image, uint8_t *output, int batchSize, int h, int w, int numThreads = -1);
+void computeDoG(const uint8_t *image, uint8_t *output, int h, int w, int numThreads = -1, int batchSize = 1, int block_x = 32, int block_y = 2);
 
 // un-initialize
 void finalize();

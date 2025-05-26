@@ -136,13 +136,30 @@ int main(int argc, char **argv)
                 return 1;
             }
 
-            fread(&frameHeight, sizeof(int), 1, file);
-            fread(&frameWidth, sizeof(int), 1, file);
+            if(fread(&frameHeight, sizeof(int), 1, file) <= 0)
+            {
+                cerr << "Error: Could not read frame height from " << inputFile << endl;
+                fclose(file);
+                return 1;
+            }
+            if(fread(&frameWidth, sizeof(int), 1, file) <= 0)
+            {
+                cerr << "Error: Could not read frame width from " << inputFile << endl;
+                fclose(file);
+                return 1;
+            }
 
             frameSize = frameHeight * frameWidth;
 
             image_data = new uint8_t[frameSize];
-            fread(image_data, sizeof(uint8_t), frameSize, file);
+            
+            if(fread(image_data, sizeof(uint8_t), frameSize, file) <= frameSize)
+            {
+                cerr << "Error: Could not read image data from " << inputFile << endl;
+                delete[] image_data;
+                fclose(file);
+                return 1;
+            }
             fclose(file);
         }
         else
@@ -163,7 +180,7 @@ int main(int argc, char **argv)
         // Allocate memory for DoG output
         uint8_t *dog = new uint8_t[frameSize];
 
-        initialize(frameHeight, frameWidth, batchSize, kernel1, kernel2, kernelSize, threshold);
+        initialize(frameHeight, frameWidth, kernel1, kernel2, kernelSize, threshold, batchSize);
 
         auto read_end_img = high_resolution_clock::now();
 
@@ -177,7 +194,7 @@ int main(int argc, char **argv)
         // }
 
         // Apply computeDoG
-        computeDoG(image_data, dog, batchSize, frameHeight, frameWidth, numThreads);
+        computeDoG(image_data, dog, frameHeight, frameWidth, numThreads, batchSize, 32, 2);
 
         auto computeDoG_end_img = high_resolution_clock::now();
 
@@ -277,7 +294,7 @@ int main(int argc, char **argv)
     vector<float> kernel2_vec = generateGaussianKernel1D(kernelSize, sigma2);
     float *kernel2 = kernel2_vec.data();
 
-    initialize(frameHeight, frameWidth, batchSize, kernel1, kernel2, kernelSize, threshold);
+    initialize(frameHeight, frameWidth, kernel1, kernel2, kernelSize, threshold, batchSize);
 
     // Process each frame and measure time for each step
     auto read_start = high_resolution_clock::now();
@@ -302,7 +319,7 @@ int main(int argc, char **argv)
 
         // Apply computeDoG
         // cout<< "Processing " << numFrames << " frames..." << endl;
-        computeDoG(data, dog, numFrames, frameHeight, frameWidth, numThreads);
+        computeDoG(data, dog, frameHeight, frameWidth, numThreads, numFrames, 32, 2);
         auto computeDoG_end = high_resolution_clock::now();
 
         for (int i = 0; i < numFrames; ++i)

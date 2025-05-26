@@ -29,7 +29,7 @@ float* kernel2;
 int kernelSize;
 float threshold;
 
-void initialize(int height, int width, float* k1, float* k2, int ksize, float th = -1) {
+void initialize(int height, int width, float* k1, float* k2, int ksize, float th = -1, int _ = 1) {
     // Initialize global variables for kernel and threshold
     kernel1 = k1;
     kernel2 = k2;
@@ -113,7 +113,7 @@ void separableConvolution(
 }
 
 // Compute the Difference of Gaussians with threshold
-void computeDoG(const uint8_t* input, uint8_t* output, int h, int w, int numThreads = -1) {
+void computeDoG(const uint8_t* input, uint8_t* output, int h, int w, int numThreads = -1, int _2 = 1, int _3 = 32, int _4 = 2) {
     if (numThreads <= 0)
         numThreads = std::thread::hardware_concurrency();
     

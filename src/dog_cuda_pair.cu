@@ -63,7 +63,7 @@ __global__ void blur_vertical(const float2 *input, uint8_t *output, float *d_ker
     output[y * WIDTH + x] = THRESHOLD < 0 ? val : (val > THRESHOLD ? 255 : 0);
 }
 
-void initialize(int height, int width, int batchSize, float *kernel1, float *kernel2, int ksize, float threshold = -1)
+void initialize(int height, int width, float *kernel1, float *kernel2, int ksize, float threshold = -1, int batchSize = 1)
 {
     size_t img_size = width * height;
     int i_threshold = threshold >= 0 ? int(threshold) : -1;
@@ -83,11 +83,10 @@ void initialize(int height, int width, int batchSize, float *kernel1, float *ker
     cudaMemcpy(d_kernel2, kernel2, sizeof(float) * ksize, cudaMemcpyHostToDevice);
 }
 
-void computeDoG(const uint8_t *input, uint8_t *output, int batchSize, int height, int width, int _ = -1)
+void computeDoG(const uint8_t *input, uint8_t *output, int height, int width, int _ = -1, int batchSize = 1, int xBlock = 32, int yBlock = 2)
 {
     size_t img_size = width * height;
 
-    const int xBlock = 32, yBlock = 2;
     dim3 block(xBlock, yBlock);
     dim3 grid((width + xBlock - 1) / xBlock, (height + yBlock - 1) / yBlock);
 

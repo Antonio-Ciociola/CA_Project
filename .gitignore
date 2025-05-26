@@ -9,10 +9,10 @@ dog_parallel
 dog_gpu
 dog_gpu_new*
 dog_gpu_pair
+dog_*flag
 rawtojpg
 images/video_full.mp4
 images/video_10s.mp4
 images/*_edge.*
 output*
 iii*
-

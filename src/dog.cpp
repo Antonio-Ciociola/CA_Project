@@ -31,7 +31,7 @@ vector<float> generateGaussianKernel2D(float* kernel1, int size) {
     return kernel;
 }
 
-void initialize(int height, int width, float* k1, float* k2, int ksize, float th = -1) {
+void initialize(int height, int width, float* k1, float* k2, int ksize, float th = -1, int _ = 1) {
     // Initialize global variables for kernel and threshold
     kernel1 = new float[ksize * ksize];
     kernel2 = new float[ksize * ksize];
@@ -71,7 +71,7 @@ void convolve(
 // Compute the Difference of Gaussians
 // if threshold is set to a negative value, it will not be applied
 // otherwise, it shall be at most 1.0f
-void computeDoG(const uint8_t* input, uint8_t* output, int h, int w, int _ = -1) {
+void computeDoG(const uint8_t* input, uint8_t* output, int h, int w, int _ = -1, int _2 = 1, int _3 = 32, int _4 = 2) {
     convolve(input, kernel1, w, h, kernelSize, temp1);
     convolve(input, kernel2, w, h, kernelSize, temp2);
 
