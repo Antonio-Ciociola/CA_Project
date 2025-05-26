@@ -3,7 +3,7 @@ PKG_LIBS := $(shell pkg-config --libs opencv4)
 CXXFLAGS := -std=c++11 $(PKG_CFLAGS)
 OPTFLAGS := -O3 -flto -ffast-math
 
-all: dog dog_flag dog_optimized dog_parallel_flag dog_parallel rawtojpg dog_gpu dog_gpu_new dog_gpu_pair
+all: dog dog_flag dog_optimized dog_parallel rawtojpg dog_gpu dog_gpu_new dog_gpu_pair
 
 dog: src/main.cpp src/dog.cpp src/dog.h src/png_util.cpp src/png_util.h src/lodepng.cpp src/lodepng.h
 	g++ $(CXXFLAGS) src/main.cpp src/dog.cpp src/png_util.cpp src/lodepng.cpp -o dog $(PKG_LIBS)
