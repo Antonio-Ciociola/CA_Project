@@ -2,7 +2,7 @@ PKG_CFLAGS := $(shell pkg-config --cflags opencv4)
 PKG_LIBS := $(shell pkg-config --libs opencv4)
 CXXFLAGS := -std=c++11 $(PKG_CFLAGS)
 OPTFLAGS := -O3 -flto -ffast-math
-NVCCFLAGS := -03 -lineinfo
+NVCCFLAGS := -O3 -lineinfo
 
 all: dog dog_flag dog_optimized dog_parallel rawtojpg dog_gpu dog_gpu_new dog_gpu_pair
 
