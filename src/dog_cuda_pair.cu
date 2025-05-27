@@ -29,11 +29,25 @@ __global__ void blur_horizontal(const uint8_t *input, float2 *output)
     sum.y = 0.0f;
     int half = KSIZE / 2;
 
-    for (int i = -half; i <= half; ++i)
-    {
-        int ix = clamp(x + i, 0, WIDTH - 1);
-        sum.x += input[y * WIDTH + ix] * d_kernels[i + half].x;
-        sum.y += input[y * WIDTH + ix] * d_kernels[i + half].y;
+    __shared__ uint8_t tile[4][80];
+    int tx = threadIdx.x;
+    int ty = threadIdx.y; // se metti più di 4 esplode fortissimo, sarà divertente
+
+    // load itself (tile is offset by half to avoid negative indices)
+    tile[ty][tx + half] = input[y * WIDTH + x];
+    // if close to left edge, load left neighbor
+    if(tx < half)
+        tile[ty][tx] = input[y * WIDTH + (x - half < 0? 0 : x - half)];
+    // if close to right edge, load right neighbor
+    if(tx >= blockDim.x - half)
+        tile[ty][tx + 2 * half] = input[y * WIDTH + (x + half >= WIDTH? WIDTH - 1 : x + half)];
+
+    __syncthreads();
+
+    #pragma unroll
+    for(int i = 0; i < KSIZE; ++i){
+        sum.x += tile[ty][tx + i] * d_kernels[i].x;
+        sum.y += tile[ty][tx + i] * d_kernels[i].y;
     }
 
     output[y * WIDTH + x].x = sum.x;
