@@ -72,7 +72,8 @@ int main(int argc, char **argv)
     string inputFile = argv[1];
     string outputFile = (argc > 2) ? argv[2] : "output.png";
 
-    float sigma1 = 1.0f, sigma2 = 2.0f, threshold = -1, numThreads = -1, printDebug = 1, xBlock = 32, yBlock = 4;
+    float sigma1 = 1.0f, sigma2 = 2.0f, threshold = -1;
+    int numThreads = -1, printDebug = 1, xBlock = 32, yBlock = 2;
     if (argc > 3)
     {
         sigma1 = stof(argv[3]);
@@ -114,6 +115,10 @@ int main(int argc, char **argv)
     {
         yBlock = stoi(argv[10]);
     }
+
+    if (printDebug)
+        printf("Input file: %s\nOutput file: %s\nSigma1: %.2f, Sigma2: %.2f, Threshold: %.2f, NumThreads: %d, BatchSize: %d, xBlock: %d, yBlock: %d\n",
+               inputFile.c_str(), outputFile.c_str(), sigma1, sigma2, threshold, numThreads, batchSize, xBlock, yBlock);
 
     // Check if input is an image or video
     bool isImage = inputFile.substr(inputFile.find_last_of(".") + 1) != "mp4";
