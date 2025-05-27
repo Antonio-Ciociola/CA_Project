@@ -116,12 +116,12 @@ void initialize(int height, int width, float* kernel1, float* kernel2, int ksize
     cudaMalloc(&d_output, img_size);
 }
 
-void computeDoG(const uint8_t* input, uint8_t* output, int height, int width, int _ = -1, int _2 = 1, int _3 = 32, int _4 = 2){
+void computeDoG(const uint8_t* input, uint8_t* output, int height, int width, int _ = -1, int _2 = 1, int xBlock = 32, int yBlock = 2) {
     size_t img_size = width * height;
     cudaMemcpy(d_input, input, img_size, cudaMemcpyHostToDevice);
 
 
-    const int xBlock = 32, yBlock = 4;
+    //const int xBlock = 32, yBlock = 4;
 
     dim3 block(xBlock, yBlock);
     dim3 grid((width + xBlock - 1) / xBlock, (height + yBlock - 1) / yBlock);

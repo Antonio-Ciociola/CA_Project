@@ -72,7 +72,7 @@ int main(int argc, char **argv)
     string inputFile = argv[1];
     string outputFile = (argc > 2) ? argv[2] : "output.png";
 
-    float sigma1 = 1.0f, sigma2 = 2.0f, threshold = -1, numThreads = -1, printDebug = 1;
+    float sigma1 = 1.0f, sigma2 = 2.0f, threshold = -1, numThreads = -1, printDebug = 1, xBlock = 32, yBlock = 4;
     if (argc > 3)
     {
         sigma1 = stof(argv[3]);
@@ -103,6 +103,16 @@ int main(int argc, char **argv)
     if (argc > 8)
     {
         batchSize = stoi(argv[8]);
+    }
+
+    if (argc > 9)
+    {
+        xBlock = stoi(argv[9]);
+    }
+    
+    if (argc > 10)
+    {
+        yBlock = stoi(argv[10]);
     }
 
     // Check if input is an image or video
@@ -153,7 +163,7 @@ int main(int argc, char **argv)
 
             image_data = new uint8_t[frameSize];
             
-            if(fread(image_data, sizeof(uint8_t), frameSize, file) <= frameSize)
+            if(fread(image_data, sizeof(uint8_t), frameSize, file) < frameSize)
             {
                 cerr << "Error: Could not read image data from " << inputFile << endl;
                 delete[] image_data;
@@ -194,7 +204,7 @@ int main(int argc, char **argv)
         // }
 
         // Apply computeDoG
-        computeDoG(image_data, dog, frameHeight, frameWidth, numThreads, batchSize, 32, 2);
+        computeDoG(image_data, dog, frameHeight, frameWidth, numThreads, batchSize, xBlock, yBlock);
 
         auto computeDoG_end_img = high_resolution_clock::now();
 
@@ -319,7 +329,7 @@ int main(int argc, char **argv)
 
         // Apply computeDoG
         // cout<< "Processing " << numFrames << " frames..." << endl;
-        computeDoG(data, dog, frameHeight, frameWidth, numThreads, numFrames, 32, 2);
+        computeDoG(data, dog, frameHeight, frameWidth, numThreads, numFrames, xBlock, yBlock);
         auto computeDoG_end = high_resolution_clock::now();
 
         for (int i = 0; i < numFrames; ++i)
