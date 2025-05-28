@@ -25,7 +25,7 @@ dog_gpu: src/main.cpp src/dog_cuda.cu src/dog.h src/png_util.cpp src/png_util.h 
 	nvcc $(CXXFLAGS) $(NVCCFLAGS) src/main.cpp src/dog_cuda.cu src/png_util.cpp src/lodepng.cpp -o dog_gpu $(PKG_LIBS)
 
 dog_gpu_new: src/main.cpp src/dog_cuda_new.cu src/dog.h src/png_util.cpp src/png_util.h src/lodepng.cpp src/lodepng.h
-	nvcc $(CXXFLAGS) src/main.cpp src/dog_cuda_new.cu src/png_util.cpp src/lodepng.cpp -o dog_gpu_new $(PKG_LIBS)
+	nvcc $(CXXFLAGS) $(NVCCFLAGS) src/main.cpp src/dog_cuda_new.cu src/png_util.cpp src/lodepng.cpp -o dog_gpu_new $(PKG_LIBS)
 
 dog_gpu_pair: src/main.cpp src/dog_cuda_pair.cu src/dog.h src/png_util.cpp src/png_util.h src/lodepng.cpp src/lodepng.h
 	nvcc $(CXXFLAGS) $(NVCCFLAGS) src/main.cpp src/dog_cuda_pair.cu src/png_util.cpp src/lodepng.cpp -o dog_gpu_pair $(PKG_LIBS)
